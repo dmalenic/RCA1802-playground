@@ -1,8 +1,8 @@
 # Test ALU Operations
 
 The code is adapted from the code snippets from
-[Wikipedia](https://en.wikipedia.org/wiki/RCA_1802#Code_samples) that
-copied the code from the
+[Wikipedia](https://en.wikipedia.org/wiki/RCA_1802#Code_samples)
+that uses the code from the
 [A Short Course in Programming](http://www.cosmacelf.com/publications/books/short-course-in-programming.htm)
 by *Tom Pittman*,
 [Chapter 5 -- Arithmetic and Logic](http://www.cosmacelf.com/publications/books/short-course-in-programming.html#chapter5).
@@ -10,10 +10,10 @@ by *Tom Pittman*,
 This code snippet example is a diagnostic routine that tests ALU
 (Arithmetic and Logic Unit) Operations.
 
-It requires three inputs: an opcode, executed at location 0029,
-and two data bytes, one stored in location 0060 (via R6) and one stored
-in location 0061 (same address register, but incremented). It does its
-operation and then puts the result back into location 0060 to display it.
+It requires three inputs: an opcode, executed at location `do_it`,
+and two data bytes, one stored in location `op1` (via R6) and one stored
+in location `op2` (same address register, but incremented). It does its
+operation and then puts the result back into location `op1` to display it.
 If the result is zero, the program also turns Q on.
 So that you will know which input is expected, the display will show
 `00` when it is waiting for an opcode, `01` when waiting for the first
