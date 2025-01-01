@@ -1,7 +1,5 @@
 *.sw?
 *~
 *.p
-*.hex
-*.lst
 .idea
 Writerside

@@ -1,0 +1,357 @@
+ AS V1.42 Beta [Bld 281] - Source File killthebit.asm - Page 1 - 31/12/24 15:39:58
+
+
+       1/   0 :                         ; -----------------------------------------------------------------------------
+       2/   0 :                         ; SPDX-FileCopyrightText: © 2024 Damir Maleničić,
+       3/   0 :                         ; SPDX-License-Identifier: MIT
+       4/   0 :                         ; -----------------------------------------------------------------------------
+       5/   0 :                         ; The port of Kill the Bit game for Altair by Dean McDaniel, May 15, 1975. 
+       6/   0 :                         ; <https://altairclone.com/downloads/killbits.pdf>
+       7/   0 :                         ; -----------------------------------------------------------------------------
+       8/   0 :                         ; Kill the rotating bit. If you miss the lit bit, another bit turns on, leaving
+       9/   0 :                         ; two bits to destroy.
+      10/   0 :                         ; Quickly toggle the correct switch on and off at the right moment.
+      11/   0 :                         ; Don't leave the switch in the on position, or the game will pause.
+      12/   0 :                         ; -----------------------------------------------------------------------------
+      13/   0 :                         ; Following is a port to the RCA1802 processor for the 1802 Membership Card
+      14/   0 :                         ; board <https://www.sunrise-ev.com/1802.htm>.
+      15/   0 :                         ;
+      16/   0 :                         ; Compared with the original, it is a significantly longer program :-(.
+      17/   0 :                         ;
+      18/   0 :                         ; It targets different hardware and processor...
+      19/   0 :                         ; As my first 1802 program, there is room for optimizations, but it also does a
+      20/   0 :                         ; bit more than the original :-).
+      21/   0 :                         ; It attempts to debounce switches and detects when the player has won the game.
+      22/   0 :                         ;
+      23/   0 :                         ; When you kill all bits :-), the program lits LEDs 7 and 0 and flashes LEDS 2-5.
+      24/   0 :                         ; If you want to play again, toggle switch 7.
+      25/   0 :                         ; If you want to exit the game and return to The 1802 Membership Card ROM
+      26/   0 :                         ; monitor program, toggle switch 0.
+      27/   0 :                         ; -----------------------------------------------------------------------------
+      28/   0 :                         ; I use [The Macro Assembler AS](http://john.ccac.rwth-aachen.de:8000/as/), but
+      29/   0 :                         ; the code should be reasonably portable to other 1802 assemblers.
+      30/   0 :                         ; The following are the assembling and linking instructions:
+      31/   0 :                         ; ```
+      32/   0 :                         ; asl -cpu 1802 -L killthebit.asm
+      33/   0 :                         ; p2hex killthebit.p killthebit.hex 
+      34/   0 :                         ; ```
+      35/   0 :                         ; The resulting `killthebit.hex` file can be loaded into The 1802 Membership
+      36/   0 :                         ; Card using monitor L command. On Linux, run `cat killthebit.hex`, copy
+      37/   0 :                         ; the output, and paste it to the monitor, then type the `R0000` command in the
+      38/   0 :                         ; monitor or just toggle in CLEAR and RUN at the board :-).
+      39/   0 :                         ; -----------------------------------------------------------------------------
+      40/   0 :                         
+      41/   0 :                         
+      42/   0 :                         ; include the bit manipulation functions --------------------------------------
+      43/   0 :                         ; This file defines a couple of bit-oriented functions that might be hardwired
+      44/   0 :                         ; for other assemblers.
+      45/   0 :                         ; A code uses `hi()` and `lo()` operators that `asl` implements as user-defined
+      46/   0 :                         ; function.
+      47/   0 :                         ; The source for `bitfuncs.inc` is provided to help port those functions to the
+      48/   0 :                         ; assembler of your choice.
+      49/   0 :                         
+      50/   0 :                         	include	"bitfuncs.inc"
+(1)    1/   0 : =>UNDEFINED             		ifndef   bitfuncsinc    ; avoid multiple inclusion
+(1)    2/   0 : =1H                     bitfuncsinc     equ      1
+(1)    3/   0 :                         
+(1)    4/   0 :                                         save
+(1)   77/   0 : ALL                                     restore                 ; allow listing again
+(1)   78/   0 :                         
+(1)   79/   0 : [1]                                     endif			; bitfuncsinc
+(1)   80/   0 :                         
+(1)   81/   0 :                         
+      51/   0 :                         
+ AS V1.42 Beta [Bld 281] - Source File killthebit.asm - Page 2 - 31/12/24 15:39:58
+
+
+      52/   0 :                         
+      53/   0 :                         ; register aliases ------------------------------------------------------------
+      54/   0 :                         ; This may also be hardwired in the assembler of your choice.
+      55/   0 :                         
+      56/   0 : =0H                     R0	EQU	0
+      57/   0 : =0BH                    RB	EQU	11
+      58/   0 : =0CH                    RC	EQU	12
+      59/   0 : =0DH                    RD	EQU	13
+      60/   0 : =0EH                    RE	EQU	14
+      61/   0 : =0FH                    RF	EQU	15
+      62/   0 :                         
+      63/   0 :                         ; Game Control Constants ------------------------------------------------------
+      64/   0 : =50H                    SPEED	EQU	50H	; change to speed up or slow down the game
+      65/   0 :                         
+      66/   0 :                         
+      67/   0 :                         	; For maximum portability, the `ORG` directive should point to the
+      68/   0 :                         	; beginning of a RCA 1802 memory page (256 byte boundary).
+      69/   0 :                         	ORG	0000H
+      70/   0 :                         
+      71/   0 :                         	; Initialization ------------------------------------------------------
+      72/   0 :                         	; RF	- points to the (tmp) variable that is used while debouncing
+      73/   0 :                         	;	  switches
+      74/   0 :                         	; RE	- delay loop counter
+      75/   0 :                         	; RD	- points to the (pattern) variable that holds a bit pattern
+      76/   0 :                         	; RC	- points to the (switches) variable that holds the last toggled
+      77/   0 :                         	;	  switch
+      78/   0 :                         	; RB	- PC for the subroutine that reads and debounces switches
+      79/   0 :                         	;	  (rd_switch)
+      80/   0 :                         	; R0	- PC for the main program 
+      81/   0 :                         	;
+      82/   0 :                         	; It assumes that the program, subroutine, and variables are on the same
+      83/   0 :                         	; memory page
+      84/   0 :                         start:
+      85/   0 :                         
+      86/   0 : F8 61                   	LDI	lo((tmp))	; Set the (tmp) variable location
+      87/   2 : AF                      	PLO	RF		;  to the RF register.
+      88/   3 : F8 62                   	LDI	lo((pattern))	; Set the (pattern) variable location
+      89/   5 : AD                      	PLO	RD		;  to the RD register.
+      90/   6 : F8 63                   	LDI	lo((switches))	; Set the (switches) variable location
+      91/   8 : AC                      	PLO	RC		;  to the RC register.
+      92/   9 : F8 4E                   	LDI	lo((rd_switch))	; Set the (rd_switch) subroutine location
+      93/   B : AB                      	PLO	RB		;  to the RB register.
+      94/   C : F8 00                   	LDI	hi($)		; To make the program relocatable:
+      95/   E : BF                      	PHI	RF		; - Load a correct `hi` part of the address of (tmp),
+      96/   F : BD                      	PHI	RD		; - Load a correct `hi` part of the address of (pattern),
+      97/  10 : BC                      	PHI	RC		; - Load a correct `hi` part of the address of (switches),
+      98/  11 : BB                      	PHI	RB		; - Load a correct `hi` part of the address of (rd_switch).
+      99/  12 : F8 00                   	LDI	0		; The lower part of a delay loop counter is 0
+     100/  14 : AE                      	PLO	RE		;  and should be set to lo(RE).
+     101/  15 :                         
+     102/  15 : 5C                      	STR	RC		; Reset the value in (switches).
+     103/  16 : F8 01                   	LDI	1		; Load the initial value for the (pattern) variable.
+     104/  18 : 5D                      	STR	RD		; Set the initial value into the (pattern) variable.
+     105/  19 :                         
+     106/  19 :                         	; The Main Loop for the Game ------------------------------------------
+     107/  19 :                         	; Continuously:
+     108/  19 :                         	; - Display the bit-pattern on LEDs,
+     109/  19 :                         	; - Loop for a split-second to enable a player to toggle a switch:
+     110/  19 :                         	;   - Debounce the switch if toggled,
+     111/  19 :                         	; - Apply the toggled switch to the bit pattern,
+ AS V1.42 Beta [Bld 281] - Source File killthebit.asm - Page 3 - 31/12/24 15:39:58
+
+
+     112/  19 :                         	; - Rotate the bit-pattern,
+     113/  19 :                         	; - If all bits are "killed" exit the loop and offer the user a choice to:
+     114/  19 :                         	;    - Play again by jumping to `start` or
+     115/  19 :                         	;    - Exit to the monitor program,
+     116/  19 :                         	; - Otherwise, continue with the main loop for the game.
+     117/  19 :                         main:
+     118/  19 :                         	; Display the Pattern -------------------------------------------------
+     119/  19 : ED                      	SEX	RD		; Select `RD` as the output data pointer.
+     120/  1A : 64                      	OUT	4		; Display the bit pattern, side-ffect `RD++`.
+     121/  1B : 2D                      	DEC	RD		; Restore `RD` with `RD--`.
+     122/  1C : F8 50                   	LDI	SPEED		; Initialize the delay loop control value.
+     123/  1E : BE                      	PHI	RE		; Set the delay loop control value to `RE`.
+     124/  1F :                         
+     125/  1F :                         	; Call the Subroutine that Reads and Debounces Switches ---------------
+     126/  1F : DB                      	SEP	RB		; Call the subroutine `rd_switch`.
+     127/  20 :                         				; The register `RC` holds the bit pattern
+     128/  20 :                         				; indicating a toggled switch.
+     129/  20 :                         
+     130/  20 :                         	; Apply Toggled Switch to a Pattern to Kill or Introduce a Bit --------
+     131/  20 :                         	; It assumes 1 on a toggled switch position, so `XOR` will toggle the
+     132/  20 :                         	; corresponding bit in the rotating bit pattern.
+     133/  20 :                         apply_switch:
+     134/  20 : 0D                      	LDN	RD		; Load the (pattern) into the `D` register.
+     135/  21 : EC                      	SEX	RC		; Switch the memory pointer to the `RC` register
+     136/  22 :                         				; that points to the variable `(switches)`.
+     137/  22 : F3                      	XOR			; `XOR` with (switches).
+     138/  23 :                         
+     139/  23 :                         	; Rotate the Bit Pattern 1 Position to the Left -----------------------
+     140/  23 :                         	; Instructions `SHRC`/`RSHR` will not do so because we don't want to 
+     141/  23 :                         	; use the carry bit through the `DL` registers.
+     142/  23 :                         	; The bit 7 needs to be rotated directly into the bit 0.
+     143/  23 :                         shift:
+     144/  23 : FE                      	SHL			; Shift the value in `D` left, MSB->DF, 0->LSB.
+     145/  24 : 3B 28                   	BNF	msb0		; If the value in `DF` is 0, skip the next instruction.
+     146/  26 : F9 01                   	ORI	1		; Set the LSB of the `D` register to 1.
+     147/  28 :                         msb0:
+     148/  28 : 5D                      	STR	RD		; Store the result in the (pattern) variable.
+     149/  29 : 0F                      	LDN	RF		; Register `RF` is 0 at this point. This is a 
+     150/  2A :                         				;  shorter version of `LDI 0`.
+     151/  2A : 5C                      	STR	RC		; The variable (switches) value is consumed, and
+     152/  2B :                         				;  reset for the next round.
+     153/  2B :                         
+     154/  2B :                         	; If the Value in the Variable (pattern) is 0, You Have Won -----------
+     155/  2B :                         	; This section detects it.
+     156/  2B :                         	; If it can not detect it, then the game continues.
+     157/  2B : 0D                      	LDN	RD		; Load the value from the variable (pattern).
+     158/  2C : 3A 19                   	BNZ	main		; If not all bits are killed, continue with the
+     159/  2E :                         				; main loop.
+     160/  2E :                         
+     161/  2E :                         	; You Won! ------------------------------------------------------------
+     162/  2E :                         	; TODO
+     163/  2E :                         	; When I find out how the monitor program prints messages, I will print
+     164/  2E :                         	; the congratulations message and explain what to do next.
+     165/  2E :                         	; For now, it is only the instructions written in this comment:
+     166/  2E :                         	; - lit the leds 0 and 7, and flash LEDs 2-5.
+     167/  2E :                         	; - If the user toggles the switch for bit 7, continue with the next game.
+     168/  2E :                         	; - If the user toggles the switch for bit 0, exit to the monitor.
+     169/  2E : F8 BD                   	LDI	0BDH		; Set MSB and LSB to 1, and the initial pattern
+     170/  30 :                         				; for flashing LEDs 2-5.
+     171/  30 : 5D                      	STR	RD		; Store the end of the game pattern to the
+ AS V1.42 Beta [Bld 281] - Source File killthebit.asm - Page 4 - 31/12/24 15:39:58
+
+
+     172/  31 :                         				; variable (pattern).
+     173/  31 :                         yes_no_loop:
+     174/  31 : ED                      	SEX	RD		; Select register `RD` as the output data pointer,
+     175/  32 :                         				; i.e., we are selecting the variable (pattern).
+     176/  32 : F8 24                   	LDI	24H		; Define the mask for toggling bits 2-5.
+     177/  34 : F3                      	XOR			; `XOR` the value in the variable (pattern) and
+     178/  35 :                         				; the mask.
+     179/  35 : 5D                      	STR	RD		; Store the result to the variable (pattern).
+     180/  36 : 64                      	OUT	4		; Display the value in the variable (pattern),
+     181/  37 :                         				; side-effect `RD++`.
+     182/  37 : 2D                      	DEC	RD		; Restore RD with `RD--`.
+     183/  38 :                         
+     184/  38 : DB                      	SEP	RB		; Call the subroutine `rd_switch` to read and
+     185/  39 :                         				; debounce switches.
+     186/  39 : EC                      	SEX	RC		; The register `RC` holds the bit pattern
+     187/  3A :                         				; indicating a toggled switch.
+     188/  3A :                         
+     189/  3A :                         	; Check If the Play Again or End of the Game Switch Has Been Toggled --
+     190/  3A : F8 81                   	LDI	81H		; Define the mask for the relevant switches.
+     191/  3C : F2                      	AND			; Check if it has been toggled.
+     192/  3D : FE                      	SHL			; Shift Left to move the MSB to DF (carry).
+     193/  3E : 33 00                   	BDF	start		; The MSB was set, the play again switch was toggled.
+     194/  40 : 3A 44                   	BNZ	reset		; The LSB was set, the end the game switch was toggled.
+     195/  42 : 30 31                   	BR	yes_no_loop	; No relevant switch was toggled, loop to let
+     196/  44 :                         				; the user provide the choice.
+     197/  44 :                         
+     198/  44 :                         	; The Following Emulates a Board Reset --------------------------------
+     199/  44 :                         	; Clear LEDs, reset the `P` and the `X` registers, and then execute a 
+     200/  44 :                         	; long branch to the ROM to the location `8000H`.
+     201/  44 :                         	; Note: resetting the `P` register is not needed, it is already 0.
+     202/  44 :                         reset:
+     203/  44 : ED                      	SEX	RD		; Select the `RD` register as the output data
+     204/  45 :                         				; pointer. We will manipulate the (pattern) variable.
+     205/  45 : F8 00                   	LDI	0		; Define the mask to clear LEDs.
+     206/  47 : 5D                      	STR	RD		; Store the mask to the variable (pattern).
+     207/  48 : 64                      	OUT	4		; Output the variable (pattern) value to clear LEDs;
+     208/  49 :                         				; side-effect RD++ is ignored during the reset.
+     209/  49 : E0                      	SEX	0		; Reset the `X` register.
+     210/  4A : C0 80 00                	LBR	monitor		; Transfer the controll to the ROM at the location
+     211/  4D :                         				; `8000H`.
+     212/  4D :                         	; The End of The Main Loop of The Game --------------------------------	
+     213/  4D :                         
+     214/  4D :                         
+     215/  4D :                         	; The Subroutine That Reads And Debounces Switches --------------------
+     216/  4D :                         	; It expects:
+     217/  4D :                         	; - The register `R0` to be the program counter for a callee,
+     218/  4D :                         	; - The register `RF` to point to the variable (tmp),
+     219/  4D :                         	; - The register `RE` to have a delay loop counter value set,
+     220/  4D :                         	; - The register `RC` to point to the variable (switches).
+     221/  4D :                         	; It uses:
+     222/  4D :                         	; - The register `RB` as its own program counter,
+     223/  4D :                         	; - The variable (tmp) as temporary storage. Its value is not preserved.
+     224/  4D :                         	; It returns:
+     225/  4D :                         	; - The last non-zero value of a switch toggle is preserved in the
+     226/  4D :                         	;   variable (switches).
+     227/  4D :                         ret_rd_sw:
+     228/  4D : D0                      	SEP	R0	      ; Restore the callee program counter.
+     229/  4E :                         	
+     230/  4E :                         	; The external loop controls the overall pace of the game.
+     231/  4E :                         rd_switch:
+ AS V1.42 Beta [Bld 281] - Source File killthebit.asm - Page 5 - 31/12/24 15:39:58
+
+
+     232/  4E : EF                      	SEX	RF		; Select the register `RF` as the input data pointer.
+     233/  4F :                         				; The subroutine uses the variable (tmp).
+     234/  4F : 6C                      	INP	4		; Read switches.
+     235/  50 : 0F                      	LDN	RF		; Load the value from variable (tmp) to the
+     236/  51 :                         				; `D` register.
+     237/  51 : 32 54                   	BZ	delay		; Skip the next instruction if all switches are off.
+     238/  53 : 5C                      	STR	RC		; Store the last read value in the variable (switches).
+     239/  54 :                         
+     240/  54 :                         	; The internal delay loop defines the time between reads of switches (debouncing).
+     241/  54 :                         delay:
+     242/  54 : 2E                      	DEC	RE		; Decrement the delay loop counter.
+     243/  55 : 8E                      	GLO	RE		; Load the register `RE` lower byte to the register `D`.
+     244/  56 : 3A 54                   	BNZ	delay		; Continue with the inner delay loop if the register `D`
+     245/  58 :                         				; content is not 0.
+     246/  58 : 9E                      	GHI	RE		; Load the register `RE` higher byte to the register `D`.
+     247/  59 : 3A 4E                   	BNZ	rd_switch	; Continue with the outer delay loop if the register `D`
+     248/  5B :                         				; content is not 0.
+     249/  5B :                         
+     250/  5B :                         	; All switches must be off at this point. If not so, wait till
+     251/  5B :                         	; the user turns the switch off.
+     252/  5B :                         check_sw_off:
+     253/  5B : 6C                      	INP	4		; Read switches, the register `RF` is still the
+     254/  5C :                         				; memory pointer, i.e., the result will be written
+     255/  5C :                         				; into the variable (tmp).
+     256/  5C : 0F                      	LDN	RF		; Load the last state of the switches.
+     257/  5D : 3A 5B                   	BNZ	check_sw_off	; If not all switches are off, loop.
+     258/  5F :                         
+     259/  5F :                         	; We have detected if a switch is toggled within a predefined time interval
+     260/  5F :                         	; and ensured that all switches are now in the off position.
+     261/  5F : 30 4D                   	BR	ret_rd_sw	; Return from the subroutine.
+     262/  61 :                         
+     263/  61 :                         
+     264/  61 :                         	; The Variables -------------------------------------------------------
+     265/  61 : 00                      tmp:		DB	00H
+     266/  62 : 01                      pattern:	DB	01H	; It holds a bit pattern that is to be displayed by LEDs.
+     267/  63 : 00                      switches:	DB	00H	; It holds a bit pattern that represents a toggled switch.
+     268/  64 :                         
+     269/8000 :                         	ORG	8000H
+     270/8000 :                         monitor:
+     271/8000 :                         
+     272/8000 :                         
+ AS V1.42 Beta [Bld 281] - Source File killthebit.asm - Page 6 - 31/12/24 15:39:58
+
+
+  Symbol Table (* = unused):
+  --------------------------
+
+*APPLY_SWITCH :                  20 C |
+*ARCHITECTURE :                                      "x86_64-unknown-linux" - |
+*BITFUNCSINC :                    1 - | *CASESENSITIVE :                  0 - |
+ CHECK_SW_OFF :                  5B C | *CONSTPI :     3.141592653589793239 - |
+*DATE :                  "31/12/24" - |  DELAY :                         54 C |
+*FALSE :                          0 - | *FLOATMAX :   1.18973149535725E4932 - |
+*HAS64 :                          1 - | *LISTON :                         1 - |
+*MACEXP :                         7 - |  MAIN :                          19 C |
+*MOMCPU :                      1802 - | *MOMCPUNAME :                "1802" - |
+ MONITOR :                     8000 C |  MSB0 :                          28 C |
+*NESTMAX :                      100 - |  PATTERN :                       62 C |
+ R0 :                             0 - |  RB :                            0B - |
+ RC :                            0C - |  RD :                            0D - |
+ RD_SWITCH :                     4E C |  RE :                            0E - |
+*RELAXED :                        0 - |  RESET :                         44 C |
+ RET_RD_SW :                     4D C |  RF :                            0F - |
+*SHIFT :                         23 C |  SPEED :                         50 - |
+ START :                          0 C |  SWITCHES :                      63 C |
+*TIME :                  "15:39:58" - |  TMP :                           61 C |
+*TRUE :                           1 - | *VERSION :                     142F - |
+ YES_NO_LOOP :                   31 C |
+
+     39 symbols
+     19 unused symbols
+
+ AS V1.42 Beta [Bld 281] - Source File killthebit.asm - Page 7 - 31/12/24 15:39:58
+
+
+  Defined Functions:
+  ------------------
+
+ROTRN                                 | ROTLN                                
+SHRN                                  | SHLN                                 
+GETBIT                                | EVEN                                 
+ODD                                   | LOWORD                               
+HIWORD                                | LO                                   
+HI                                    | CUTOUT                               
+INVMASK                               | MASK                                 
+
+ AS V1.42 Beta [Bld 281] - Source File killthebit.asm - Page 8 - 31/12/24 15:39:58
+
+
+  Code Pages:
+  ----------
+
+STANDARD (0 changed characters)
+
+1 code page
+
+0.00 seconds assembly time
+
+    353 lines source file
+      2 passes
+      0 errors
+      0 warnings

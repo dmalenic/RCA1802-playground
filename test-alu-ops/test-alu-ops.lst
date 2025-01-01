@@ -1,0 +1,156 @@
+ AS V1.42 Beta [Bld 281] - Source File test-alu-ops.asm - Page 1 - 31/12/24 15:39:58
+
+
+       1/   0 :                         ; -----------------------------------------------------------------------------
+       2/   0 :                         ; TEST ALU OPS
+       3/   0 :                         ;
+       4/   0 :                         ; This code snippet example is a diagnostic routine that tests
+       5/   0 :                         ; ALU (Arithmetic and Logic Unit) Operations.
+       6/   0 :                         ; https://en.wikipedia.org/wiki/RCA_1802#Code_samples
+       7/   0 :                         ; http://www.cosmacelf.com/publications/books/short-course-in-programming.html#chapter5
+       8/   0 :                         ; -----------------------------------------------------------------------------
+       9/   0 :                         
+      10/   0 :                         
+      11/   0 :                         ; -----------------------------------------------------------------------------
+      12/   0 :                         ; This version is written for
+      13/   0 :                         ; [The Macro Assembler AS](http://john.ccac.rwth-aachen.de:8000/as/), but
+      14/   0 :                         ; the code should be portable to other 1802 assemblers.
+      15/   0 :                         ; The following are the assembling and linking instructions:
+      16/   0 :                         ; ```
+      17/   0 :                         ; asl -cpu 1802 -L test-alu-ops.asm
+      18/   0 :                         ; p2hex test-alu-ops.p test-alu-ops.hex
+      19/   0 :                         ; ```
+      20/   0 :                         ; -----------------------------------------------------------------------------
+      21/   0 :                         
+      22/   0 :                         
+      23/   0 :                         ; include the bit manipulation functions --------------------------------------
+      24/   0 :                         ; This file defines a couple of bit-oriented functions that might be hardwired
+      25/   0 :                         ; for other assemblers.
+      26/   0 :                         ; A code uses `hi()` and `lo()` operators that `asl` implements as user-defined
+      27/   0 :                         ; function.
+      28/   0 :                         ; The source for `bitfuncs.inc` is provided to help port those functions to the
+      29/   0 :                         ; assembler of your choice.
+      30/   0 :                         
+      31/   0 :                         	include	"bitfuncs.inc"
+(1)    1/   0 : =>UNDEFINED             		ifndef   bitfuncsinc    ; avoid multiple inclusion
+(1)    2/   0 : =1H                     bitfuncsinc     equ      1
+(1)    3/   0 :                         
+(1)    4/   0 :                                         save
+(1)   77/   0 : ALL                                     restore                 ; allow listing again
+(1)   78/   0 :                         
+(1)   79/   0 : [1]                                     endif			; bitfuncsinc
+(1)   80/   0 :                         
+(1)   81/   0 :                         
+      32/   0 :                         
+      33/   0 :                         
+      34/   0 : =0H                     R0	EQU	0
+      35/   0 : =6H                     R6	EQU	6
+      36/   0 :                         
+      37/   0 :                         	ORG	0
+      38/   0 :                         
+      39/   0 :                         	; Assumes P is 0
+      40/   0 :                         	; Set the initial condition as after reset
+      41/   0 :                         
+      42/   0 : 90                      	GHI	R0		; Set up R6
+      43/   1 : B6                      	PHI	R6
+      44/   2 : F8 29                   	LDI	do_it		; For input of OPCODE
+      45/   4 : A6                      	PLO	R6
+      46/   5 : E0                      	SEX	0		; (X=0 already)
+      47/   6 : 64                      	OUT	4		; Announce us ready (Note: X=0)
+      48/   7 : 00                      	DB	00		; immediate value to display
+      49/   8 : E6                      	SEX	6		; Now X=6
+      50/   9 : 3F 09                   	BN4	$		; Wait for it
+      51/   B : 6C                      	INP	4		; OK, get it
+ AS V1.42 Beta [Bld 281] - Source File test-alu-ops.asm - Page 2 - 31/12/24 15:39:58
+
+
+      52/   C : 64                      	OUT	4		; And echo to display
+      53/   D : 37 0D                   	B4	$		; Wait for release
+      54/   F : F8 60                   	LDI	lo((op1))	; Now get ready for
+      55/  11 : A6                      	PLO	R6		;  the first operand
+      56/  12 : E0                      	SEX	0		; Say so
+      57/  13 : 64                      	OUT	4		; (Note X=0)
+      58/  14 : 01                      	DB	01		; immediate value to display
+      59/  15 : 3F 15                   	BN4	$
+      60/  17 : E6                      	SEX	R6		; Take it
+      61/  18 : 6C                      	INP	4		;    in to (op1)
+      62/  19 : 64                      	OUT	4		; Echo it and also increment R6
+      63/  1A : 37 1A                   	B4	$
+      64/  1C : E0                      	SEX	0		; DITTO the second operand to (op2)
+      65/  1D : 64                      	OUT	4		; (Note X=0)
+      66/  1E : 02                      	DB	02		; immediate value to display
+      67/  1F : E6                      	SEX	6
+      68/  20 : 3F 20                   loop:	BN4	$		; Wait for it
+      69/  22 : 6C                      	INP	4		; Get it (Note: X=6)
+      70/  23 : 64                      	OUT	4		; Echo it
+      71/  24 : 37 24                   	B4	$		; Wait for release
+      72/  26 : 26                      	DEC	R6		; Back up R6 to (op1)
+      73/  27 : 26                      	DEC	R6
+      74/  28 : 46                      	LDA	R6		; Get the 1st operand to D
+      75/  29 : C4                      do_it:	NOP			; Do operation
+      76/  2A : C4                      	NOP			; (Spare)
+      77/  2B : 26                      	DEC	R6		; Back to (op1)
+      78/  2C : 56                      	STR	R6		; Output result
+      79/  2D : 64                      	OUT	4		; (X=6 still)
+      80/  2E : 7A                      	REQ			; Turn off Q
+      81/  2F : CA 00 20                	LBNZ	loop		; Then if Zero,
+      82/  32 : 7B                      	SEQ			; Turn it on again
+      83/  33 : 30 20                   	BR	loop		; Repeat in any case
+      84/  35 :                         
+      85/  60 :                         	ORG	0060H
+      86/  60 : 00                      op1:	DB	0		; the 1st operand
+      87/  61 : 00                      op2:	DB	0		; the 2nd operand
+      88/  62 :                         
+      89/  62 :                         	END
+ AS V1.42 Beta [Bld 281] - Source File test-alu-ops.asm - Page 3 - 31/12/24 15:39:58
+
+
+  Symbol Table (* = unused):
+  --------------------------
+
+*ARCHITECTURE :                                      "x86_64-unknown-linux" - |
+*BITFUNCSINC :                    1 - | *CASESENSITIVE :                  0 - |
+*CONSTPI :     3.141592653589793239 - | *DATE :                  "31/12/24" - |
+ DO_IT :                         29 C | *FALSE :                          0 - |
+*FLOATMAX :   1.18973149535725E4932 - | *HAS64 :                          1 - |
+*LISTON :                         1 - |  LOOP :                          20 C |
+*MACEXP :                         7 - | *MOMCPU :                      1802 - |
+*MOMCPUNAME :                "1802" - | *NESTMAX :                      100 - |
+ OP1 :                           60 C | *OP2 :                           61 C |
+ R0 :                             0 - |  R6 :                             6 - |
+*RELAXED :                        0 - | *TIME :                  "15:39:58" - |
+*TRUE :                           1 - | *VERSION :                     142F - |
+
+     23 symbols
+     18 unused symbols
+
+ AS V1.42 Beta [Bld 281] - Source File test-alu-ops.asm - Page 4 - 31/12/24 15:39:58
+
+
+  Defined Functions:
+  ------------------
+
+ROTRN                                 | ROTLN                                
+SHRN                                  | SHLN                                 
+GETBIT                                | EVEN                                 
+ODD                                   | LOWORD                               
+HIWORD                                | LO                                   
+HI                                    | CUTOUT                               
+INVMASK                               | MASK                                 
+
+ AS V1.42 Beta [Bld 281] - Source File test-alu-ops.asm - Page 5 - 31/12/24 15:39:58
+
+
+  Code Pages:
+  ----------
+
+STANDARD (0 changed characters)
+
+1 code page
+
+0.00 seconds assembly time
+
+    172 lines source file
+      2 passes
+      0 errors
+      0 warnings
