@@ -1,4 +1,4 @@
- AS V1.42 Beta [Bld 281] - Source File blink-q-led-at-visible-rate.asm - Page 1 - 31/12/24 15:39:58
+ AS V1.42 Beta [Bld 281] - Source File blink-q-led-at-visible-rate.asm - Page 1 - 18/01/25 20:44:02
 
 
     1/   0 :                            ; -----------------------------------------------------------------------------
@@ -23,30 +23,33 @@
    20/   0 :                            ; -----------------------------------------------------------------------------
    21/   0 :                            
    22/   0 :                            
-   23/   0 : =1H                        R1	EQU	1
+   23/   0 :                            	RELAXED	ON
    24/   0 :                            
-   25/   0 :                            	ORG	0
-   26/   0 :                            
-   27/   0 :                            start:
-   28/   0 : 7A                         	REQ			; reset Q
-   29/   1 :                            L0:
-   30/   1 : F8 10                      	LDI	10H		; load counter
-   31/   3 : B1                         	PHI	R1		;   into high R1
-   32/   4 :                            L1:
-   33/   4 :                            	; start of delay loop
-   34/   4 : 21                         	DEC	R1		; decrement R1
-   35/   5 : 91                         	GHI	R1		; load the high part of R1 into D
-   36/   6 : 3A 04                      	BNZ	L1		; branch until the high part of R1 is zero
-   37/   8 :                            	; end of delay loop
-   38/   8 :                            
-   39/   8 : 31 00                      	BQ	start		; if Q is set, go to start to reset it
-   40/   A :                            				;   and do it all again
-   41/   A : 7B                         	SEQ			; otherwise, set Q
-   42/   B : 30 01                      	BR	L0		; and branch to set the counter for a
-   43/   D :                            				;   delay loop
-   44/   D :                            
-   45/   D :                            	END
- AS V1.42 Beta [Bld 281] - Source File blink-q-led-at-visible-rate.asm - Page 2 - 31/12/24 15:39:58
+   25/   0 :                            
+   26/   0 : =1H                        R1	EQU	1
+   27/   0 :                            
+   28/   0 :                            	ORG	0
+   29/   0 :                            
+   30/   0 :                            start:
+   31/   0 : 7A                         	REQ			; reset Q
+   32/   1 :                            L0:
+   33/   1 : F8 10                      	LDI	0x10		; load counter
+   34/   3 : B1                         	PHI	R1		;   into high R1
+   35/   4 :                            L1:
+   36/   4 :                            	; start of delay loop
+   37/   4 : 21                         	DEC	R1		; decrement R1
+   38/   5 : 91                         	GHI	R1		; load the high part of R1 into D
+   39/   6 : 3A 04                      	BNZ	L1		; branch until the high part of R1 is zero
+   40/   8 :                            	; end of delay loop
+   41/   8 :                            
+   42/   8 : 31 00                      	BQ	start		; if Q is set, go to start to reset it
+   43/   A :                            				;   and do it all again
+   44/   A : 7B                         	SEQ			; otherwise, set Q
+   45/   B : 30 01                      	BR	L0		; and branch to set the counter for a
+   46/   D :                            				;   delay loop
+   47/   D :                            
+   48/   D :                            	END
+ AS V1.42 Beta [Bld 281] - Source File blink-q-led-at-visible-rate.asm - Page 2 - 18/01/25 20:44:02
 
 
   Symbol Table (* = unused):
@@ -54,20 +57,20 @@
 
 *ARCHITECTURE :                                      "x86_64-unknown-linux" - |
 *CASESENSITIVE :                  0 - | *CONSTPI :     3.141592653589793239 - |
-*DATE :                  "31/12/24" - | *FALSE :                          0 - |
+*DATE :                  "18/01/25" - | *FALSE :                          0 - |
 *FLOATMAX :   1.18973149535725E4932 - | *HAS64 :                          1 - |
  L0 :                             1 C |  L1 :                             4 C |
 *LISTON :                         1 - | *MACEXP :                         7 - |
 *MOMCPU :                      1802 - | *MOMCPUNAME :                "1802" - |
 *NESTMAX :                      100 - |  R1 :                             1 - |
-*RELAXED :                        0 - |  START :                          0 C |
-*TIME :                  "15:39:58" - | *TRUE :                           1 - |
+*RELAXED :                        1 - |  START :                          0 C |
+*TIME :                  "20:44:02" - | *TRUE :                           1 - |
 *VERSION :                     142F - |
 
      20 symbols
      16 unused symbols
 
- AS V1.42 Beta [Bld 281] - Source File blink-q-led-at-visible-rate.asm - Page 3 - 31/12/24 15:39:58
+ AS V1.42 Beta [Bld 281] - Source File blink-q-led-at-visible-rate.asm - Page 3 - 18/01/25 20:44:02
 
 
   Code Pages:
@@ -79,7 +82,7 @@ STANDARD (0 changed characters)
 
 0.00 seconds assembly time
 
-     47 lines source file
+     50 lines source file
       1 pass
       0 errors
       0 warnings

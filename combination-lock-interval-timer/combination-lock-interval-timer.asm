@@ -16,7 +16,11 @@
 ; -----------------------------------------------------------------------------
 
 
+	RELAXED	ON
+
+
 	ORG	0
+
 
 ; register aliases
 R0	EQU	0
@@ -59,19 +63,19 @@ start:
 	BN4	$		; Loop until IN is pressed
 	B4	$		; Loop until IN is released
 	INP	4		; Read the switches into (tmp)
-	XRI	0CAH		; Check if byte 1 is correct
+	XRI	0xCA		; Check if byte 1 is correct
 	BNZ	error_sub	; No, display error
 	; input and test the second combination digit -------------------------
 	BN4	$		; Loop until IN is pressed
 	B4	$		; Loop until IN is released
 	INP	4		; Read the switches into (tmp)
-	XRI	0FEH		; Check if byte 2 is correct
+	XRI	0xFE		; Check if byte 2 is correct
 	BNZ	error_sub	; No, display error
 	; input and test the third combination digit --------------------------
 	BN4	$		; Loop until IN is pressed
 	B4	$		; Loop until IN is released
 	INP	4		; Read the switches into (tmp)
-	XRI	42H		; Check if byte 3 is correct
+	XRI	0x42		; Check if byte 3 is correct
 	BNZ	error_sub	; No, display error
 	; all bytes are ok, activate the timer --------------------------------
 
@@ -80,7 +84,7 @@ interval_timer:
 	SEQ			; set Q
 loop_param:
 	; load immediately the predetermined value that defines the looping interval
-	LDI	0FH		; Predetermined value to compare RF against
+	LDI	0xF		; Predetermined value to compare RF against
 	STR	RD		; Store it in the memory location pointed by RD
 	OUT	4		; Output memory location pointed by RD, RD++
 	DEC	RD		; RD-- to restore RD
@@ -114,7 +118,7 @@ time_has_elapsed:
 	; End	
 
 error_sub:
-	LDI	0EEH		; Load message "EE"
+	LDI	0xEE		; Load message "EE"
 	STR	RD		; Store it to (tmp)
 	OUT	4		; Output the message from (tmp), RD++
 	PHI	RF		; Also, put it into the high part of R4
@@ -124,8 +128,8 @@ loop_ee:
 	GHI	RF		; Loadi the hi part of R4
 	BNZ	loop_ee		; Continue the loop if it is not 0
 	BR	start		; Go to start
-tmp:	DB	00H
+tmp:	DB	0
 
-	ORG	8000H
+	ORG	0x8000
 monitor:
 

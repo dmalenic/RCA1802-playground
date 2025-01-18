@@ -22,6 +22,9 @@
 ; -----------------------------------------------------------------------------
 
 
+	RELAXED	ON
+
+
 ; include the bit manipulation functions --------------------------------------
 ; This file defines a couple of bit-oriented functions that might be hardwired
 ; for other assemblers.
@@ -30,12 +33,16 @@
 ; The source for `bitfuncs.inc` is provided to help port those functions to the
 ; assembler of your choice.
 
-	include "bitfuncs.inc"
+
+	INCLUDE "bitfuncs.inc"
+
 
 R0	EQU	0
 R1	EQU	1
 
+
 	; assumes P=0
+
 
 	ORG	0
 
@@ -43,7 +50,7 @@ start:
 	SEX	1		; set X=1
 	GHI	R0		; D=R0 high byte (i.e. 0)
 	PHI	R1		; R1 high byte = 0
-	LDI	lo((tmp))	; set D=lower byte of the address of (tmp)
+	LDI	lo(tmp)		; set D=lower byte of the address of (tmp)
 	PLO	R1		; R1=the address of (tmp)
 	INP	4		; read switches into D and M(R1)
 	OUT	4		; write LEDs from M(R1) and increment R1
@@ -59,3 +66,4 @@ tmp:
 	DB	0
 
 	END
+

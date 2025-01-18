@@ -1,4 +1,4 @@
- AS V1.42 Beta [Bld 281] - Source File switches-leds-and-q.asm - Page 1 - 31/12/24 15:39:58
+ AS V1.42 Beta [Bld 281] - Source File switches-leds-and-q.asm - Page 1 - 18/01/25 20:44:02
 
 
        1/   0 :                         ; -----------------------------------------------------------------------------
@@ -25,15 +25,19 @@
       22/   0 :                         ; -----------------------------------------------------------------------------
       23/   0 :                         
       24/   0 :                         
-      25/   0 :                         ; include the bit manipulation functions --------------------------------------
-      26/   0 :                         ; This file defines a couple of bit-oriented functions that might be hardwired
-      27/   0 :                         ; for other assemblers.
-      28/   0 :                         ; A code uses `hi()` and `lo()` operators that `asl` implements as user-defined
-      29/   0 :                         ; function.     
-      30/   0 :                         ; The source for `bitfuncs.inc` is provided to help port those functions to the
-      31/   0 :                         ; assembler of your choice.
-      32/   0 :                         
-      33/   0 :                         	include "bitfuncs.inc"
+      25/   0 :                         	RELAXED	ON
+      26/   0 :                         
+      27/   0 :                         
+      28/   0 :                         ; include the bit manipulation functions --------------------------------------
+      29/   0 :                         ; This file defines a couple of bit-oriented functions that might be hardwired
+      30/   0 :                         ; for other assemblers.
+      31/   0 :                         ; A code uses `hi()` and `lo()` operators that `asl` implements as user-defined
+      32/   0 :                         ; function.     
+      33/   0 :                         ; The source for `bitfuncs.inc` is provided to help port those functions to the
+      34/   0 :                         ; assembler of your choice.
+      35/   0 :                         
+      36/   0 :                         
+      37/   0 :                         	INCLUDE "bitfuncs.inc"
 (1)    1/   0 : =>UNDEFINED             		ifndef   bitfuncsinc    ; avoid multiple inclusion
 (1)    2/   0 : =1H                     bitfuncsinc     equ      1
 (1)    3/   0 :                         
@@ -43,38 +47,41 @@
 (1)   79/   0 : [1]                                     endif			; bitfuncsinc
 (1)   80/   0 :                         
 (1)   81/   0 :                         
-      34/   0 :                         
-      35/   0 : =0H                     R0	EQU	0
-      36/   0 : =1H                     R1	EQU	1
-      37/   0 :                         
-      38/   0 :                         	; assumes P=0
+      38/   0 :                         
       39/   0 :                         
-      40/   0 :                         	ORG	0
-      41/   0 :                         
-      42/   0 :                         start:
-      43/   0 : E1                      	SEX	1		; set X=1
-      44/   1 : 90                      	GHI	R0		; D=R0 high byte (i.e. 0)
-      45/   2 : B1                      	PHI	R1		; R1 high byte = 0
-      46/   3 : F8 10                   	LDI	lo((tmp))	; set D=lower byte of the address of (tmp)
-      47/   5 : A1                      	PLO	R1		; R1=the address of (tmp)
-      48/   6 : 6C                      	INP	4		; read switches into D and M(R1)
-      49/   7 : 64                      	OUT	4		; write LEDs from M(R1) and increment R1
-      50/   8 :                         				;   (but we can ignore it in this program)
-      51/   8 : 7B                      	SEQ			; set Q, at this point, D holds the value
- AS V1.42 Beta [Bld 281] - Source File switches-leds-and-q.asm - Page 2 - 31/12/24 15:39:58
+      40/   0 : =0H                     R0	EQU	0
+      41/   0 : =1H                     R1	EQU	1
+      42/   0 :                         
+      43/   0 :                         
+      44/   0 :                         	; assumes P=0
+      45/   0 :                         
+      46/   0 :                         
+      47/   0 :                         	ORG	0
+      48/   0 :                         
+      49/   0 :                         start:
+      50/   0 : E1                      	SEX	1		; set X=1
+      51/   1 : 90                      	GHI	R0		; D=R0 high byte (i.e. 0)
+ AS V1.42 Beta [Bld 281] - Source File switches-leds-and-q.asm - Page 2 - 18/01/25 20:44:02
 
 
-      52/   9 :                         				;   from switches
-      53/   9 : FF 01                   	SMI	1		; subtract memory immediate from D (D = D-1)
-      54/   B : 3A 00                   	BNZ	start		; branch if not zero to start,
-      55/   D :                         				; (so this loops "switch" times)
-      56/   D : 7A                      	REQ			; reset Q
-      57/   E : 30 00                   	BR	start		; go to start
-      58/  10 :                         tmp:
-      59/  10 : 00                      	DB	0
-      60/  11 :                         
-      61/  11 :                         	END
- AS V1.42 Beta [Bld 281] - Source File switches-leds-and-q.asm - Page 3 - 31/12/24 15:39:58
+      52/   2 : B1                      	PHI	R1		; R1 high byte = 0
+      53/   3 : F8 10                   	LDI	lo(tmp)		; set D=lower byte of the address of (tmp)
+      54/   5 : A1                      	PLO	R1		; R1=the address of (tmp)
+      55/   6 : 6C                      	INP	4		; read switches into D and M(R1)
+      56/   7 : 64                      	OUT	4		; write LEDs from M(R1) and increment R1
+      57/   8 :                         				;   (but we can ignore it in this program)
+      58/   8 : 7B                      	SEQ			; set Q, at this point, D holds the value
+      59/   9 :                         				;   from switches
+      60/   9 : FF 01                   	SMI	1		; subtract memory immediate from D (D = D-1)
+      61/   B : 3A 00                   	BNZ	start		; branch if not zero to start,
+      62/   D :                         				; (so this loops "switch" times)
+      63/   D : 7A                      	REQ			; reset Q
+      64/   E : 30 00                   	BR	start		; go to start
+      65/  10 :                         tmp:
+      66/  10 : 00                      	DB	0
+      67/  11 :                         
+      68/  11 :                         	END
+ AS V1.42 Beta [Bld 281] - Source File switches-leds-and-q.asm - Page 3 - 18/01/25 20:44:02
 
 
   Symbol Table (* = unused):
@@ -82,20 +89,20 @@
 
 *ARCHITECTURE :                                      "x86_64-unknown-linux" - |
 *BITFUNCSINC :                    1 - | *CASESENSITIVE :                  0 - |
-*CONSTPI :     3.141592653589793239 - | *DATE :                  "31/12/24" - |
+*CONSTPI :     3.141592653589793239 - | *DATE :                  "18/01/25" - |
 *FALSE :                          0 - | *FLOATMAX :   1.18973149535725E4932 - |
 *HAS64 :                          1 - | *LISTON :                         1 - |
 *MACEXP :                         7 - | *MOMCPU :                      1802 - |
 *MOMCPUNAME :                "1802" - | *NESTMAX :                      100 - |
  R0 :                             0 - |  R1 :                             1 - |
-*RELAXED :                        0 - |  START :                          0 C |
-*TIME :                  "15:39:58" - |  TMP :                           10 C |
+*RELAXED :                        1 - |  START :                          0 C |
+*TIME :                  "20:44:02" - |  TMP :                           10 C |
 *TRUE :                           1 - | *VERSION :                     142F - |
 
      21 symbols
      17 unused symbols
 
- AS V1.42 Beta [Bld 281] - Source File switches-leds-and-q.asm - Page 4 - 31/12/24 15:39:58
+ AS V1.42 Beta [Bld 281] - Source File switches-leds-and-q.asm - Page 4 - 18/01/25 20:44:02
 
 
   Defined Functions:
@@ -109,7 +116,7 @@ HIWORD                                | LO
 HI                                    | CUTOUT                               
 INVMASK                               | MASK                                 
 
- AS V1.42 Beta [Bld 281] - Source File switches-leds-and-q.asm - Page 5 - 31/12/24 15:39:58
+ AS V1.42 Beta [Bld 281] - Source File switches-leds-and-q.asm - Page 5 - 18/01/25 20:44:02
 
 
   Code Pages:
@@ -121,7 +128,7 @@ STANDARD (0 changed characters)
 
 0.00 seconds assembly time
 
-    143 lines source file
+    151 lines source file
       2 passes
       0 errors
       0 warnings

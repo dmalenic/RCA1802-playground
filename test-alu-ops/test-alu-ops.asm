@@ -20,6 +20,9 @@
 ; -----------------------------------------------------------------------------
 
 
+	RELAXED	ON
+
+
 ; include the bit manipulation functions --------------------------------------
 ; This file defines a couple of bit-oriented functions that might be hardwired
 ; for other assemblers.
@@ -28,7 +31,8 @@
 ; The source for `bitfuncs.inc` is provided to help port those functions to the
 ; assembler of your choice.
 
-	include	"bitfuncs.inc"
+
+	INCLUDE	"bitfuncs.inc"
 
 
 R0	EQU	0
@@ -45,17 +49,17 @@ R6	EQU	6
 	PLO	R6
 	SEX	0		; (X=0 already)
 	OUT	4		; Announce us ready (Note: X=0)
-	DB	00		; immediate value to display
+	DB	0		; immediate value to display
 	SEX	6		; Now X=6
 	BN4	$		; Wait for it
 	INP	4		; OK, get it
 	OUT	4		; And echo to display
 	B4	$		; Wait for release
-	LDI	lo((op1))	; Now get ready for
+	LDI	lo(op1)		; Now get ready for
 	PLO	R6		;  the first operand
 	SEX	0		; Say so
 	OUT	4		; (Note X=0)
-	DB	01		; immediate value to display
+	DB	1		; immediate value to display
 	BN4	$
 	SEX	R6		; Take it
 	INP	4		;    in to (op1)
@@ -63,7 +67,7 @@ R6	EQU	6
 	B4	$
 	SEX	0		; DITTO the second operand to (op2)
 	OUT	4		; (Note X=0)
-	DB	02		; immediate value to display
+	DB	2		; immediate value to display
 	SEX	6
 loop:	BN4	$		; Wait for it
 	INP	4		; Get it (Note: X=6)
@@ -82,7 +86,7 @@ do_it:	NOP			; Do operation
 	SEQ			; Turn it on again
 	BR	loop		; Repeat in any case
 
-	ORG	0060H
+	ORG	0x60
 op1:	DB	0		; the 1st operand
 op2:	DB	0		; the 2nd operand
 

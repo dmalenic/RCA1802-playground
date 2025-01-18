@@ -4,11 +4,19 @@ all: clean build
 
 build:
 	for dir in *; do \
-		$(MAKE) -C $$dir build; \
+		if [ -d "$$dir" ] ; then \
+			if [ -f "$$dir/Makefile" ] ; then \
+				$(MAKE) -C $$dir build; \
+			fi \
+		fi \
 	done
 
 clean:
 	$(MAKE) clean_dir
 	for dir in *; do \
-		$(MAKE) -C $$dir clean_dir; \
+		if [ -d "$$dir" ] ; then \
+			if [ -f "$$dir/Makefile" ] ; then \
+				$(MAKE) -C $$dir clean_dir; \
+			fi \
+		fi \
 	done
