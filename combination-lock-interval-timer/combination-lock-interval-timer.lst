@@ -1,0 +1,192 @@
+ AS V1.42 Beta [Bld 281] - Source File combination-lock-interval-timer.asm - Page 1 - 28/01/25 23:33:14
+
+
+    1/   0 :                            ; -----------------------------------------------------------------------------
+    2/   0 :                            ; SPDX-FileCopyrightText: © 2024 Damir Maleničić,
+    3/   0 :                            ; SPDX-License-Identifier: MIT
+    4/   0 :                            ; -----------------------------------------------------------------------------
+    5/   0 :                            
+    6/   0 :                            
+    7/   0 :                            ; -----------------------------------------------------------------------------
+    8/   0 :                            ; This version is written for
+    9/   0 :                            ; [The Macro Assembler AS](http://john.ccac.rwth-aachen.de:8000/as/), but
+   10/   0 :                            ; the code should be portable to other 1802 assemblers.
+   11/   0 :                            ; The following are the assembling and linking instructions:
+   12/   0 :                            ; ```   
+   13/   0 :                            ; asl -cpu 1802 -L combination-lock-interval-timer.asm
+   14/   0 :                            ; p2hex combination-lock-interval-timer.p combination-lock-interval-timer.hex
+   15/   0 :                            ; ```
+   16/   0 :                            ; -----------------------------------------------------------------------------
+   17/   0 :                            
+   18/   0 :                            
+   19/   0 :                            	RELAXED	ON
+   20/   0 :                            
+   21/   0 :                            
+   22/   0 :                            	ORG	0
+   23/   0 :                            
+   24/   0 :                            
+   25/   0 :                            ; register aliases
+   26/   0 : =0H                        R0	EQU	0
+   27/   0 : =1H                        R1	EQU	1
+   28/   0 : =2H                        R2	EQU	2
+   29/   0 : =3H                        R3	EQU	3
+   30/   0 : =4H                        R4	EQU	4
+   31/   0 : =5H                        R5	EQU	5
+   32/   0 : =6H                        R6	EQU	6
+   33/   0 : =7H                        R7	EQU	7
+   34/   0 : =8H                        R8	EQU	8
+   35/   0 : =9H                        R9	EQU	9
+   36/   0 : =0AH                       RA	EQU	10
+   37/   0 : =0BH                       RB	EQU	11
+   38/   0 : =0CH                       RC	EQU	12
+   39/   0 : =0DH                       RD	EQU	13
+   40/   0 : =0EH                       RE	EQU	14
+   41/   0 : =0FH                       RF	EQU	15
+   42/   0 :                            
+   43/   0 :                            start:
+   44/   0 :                            	; combination-lock initialization -------------------------------------
+   45/   0 : 7A                         	REQ			; Q is low
+   46/   1 : F8 59                      	LDI	(tmp)		; Initialise Reg D as an output pointer
+   47/   3 : AD                         	PLO	RD		; RD.0 = address(tmp)
+   48/   4 : F8 00                      	LDI	0		; Initialize Reg E and F for use as control
+   49/   6 : AF                         	PLO	RF		;
+   50/   7 : BF                         	PHI	RF		; RF=0000H
+   51/   8 : AE                         	PLO	RE		;
+   52/   9 : BE                         	PHI	RE		; RE=0000H
+   53/   A : BD                         	PHI	RD		; RD=(tmp)
+   54/   B :                            
+   55/   B : ED                         	SEX	RD		; X=DH
+   56/   C :                            
+   57/   C :                            	; initialize display to "00"
+   58/   C : F8 00                      	LDI	0		; Load message "00" 
+   59/   E : 5D                         	STR	RD		;   to (tmp)
+   60/   F : 64                         	OUT	4		; Output the message from (tmp), RD++
+ AS V1.42 Beta [Bld 281] - Source File combination-lock-interval-timer.asm - Page 2 - 28/01/25 23:33:14
+
+
+   61/  10 : 2D                         	DEC	RD		; RD-- to restore RD
+   62/  11 :                            	; input and test the first combination digit --------------------------
+   63/  11 : 3F 11                      	BN4	$		; Loop until IN is pressed
+   64/  13 : 37 13                      	B4	$		; Loop until IN is released
+   65/  15 : 6C                         	INP	4		; Read the switches into (tmp)
+   66/  16 : FB CA                      	XRI	0xCA		; Check if byte 1 is correct
+   67/  18 : 3A 4D                      	BNZ	error_sub	; No, display error
+   68/  1A :                            	; input and test the second combination digit -------------------------
+   69/  1A : 3F 1A                      	BN4	$		; Loop until IN is pressed
+   70/  1C : 37 1C                      	B4	$		; Loop until IN is released
+   71/  1E : 6C                         	INP	4		; Read the switches into (tmp)
+   72/  1F : FB FE                      	XRI	0xFE		; Check if byte 2 is correct
+   73/  21 : 3A 4D                      	BNZ	error_sub	; No, display error
+   74/  23 :                            	; input and test the third combination digit --------------------------
+   75/  23 : 3F 23                      	BN4	$		; Loop until IN is pressed
+   76/  25 : 37 25                      	B4	$		; Loop until IN is released
+   77/  27 : 6C                         	INP	4		; Read the switches into (tmp)
+   78/  28 : FB 42                      	XRI	0x42		; Check if byte 3 is correct
+   79/  2A : 3A 4D                      	BNZ	error_sub	; No, display error
+   80/  2C :                            	; all bytes are ok, activate the timer --------------------------------
+   81/  2C :                            
+   82/  2C :                            interval_timer:
+   83/  2C :                            	; timer initialization ------------------------------------------------
+   84/  2C : 7B                         	SEQ			; set Q
+   85/  2D :                            loop_param:
+   86/  2D :                            	; load immediately the predetermined value that defines the looping interval
+   87/  2D : F8 0F                      	LDI	0xF		; Predetermined value to compare RF against
+   88/  2F : 5D                         	STR	RD		; Store it in the memory location pointed by RD
+   89/  30 : 64                         	OUT	4		; Output memory location pointed by RD, RD++
+   90/  31 : 2D                         	DEC	RD		; RD-- to restore RD
+   91/  32 :                            	; the interval loop ---------------------------------------------------
+   92/  32 :                            loop:
+   93/  32 : 2E                         	DEC	RE		; Decrement timer
+   94/  33 : 9E                         	GHI	RE		; Load timer hi-byte
+   95/  34 : 3A 32                      	BNZ	loop		; Check timer hi-byte, continue loop if not 0
+   96/  36 : 8E                         	GLO	RE		; Load timer lo-byte
+   97/  37 : 3A 32                      	BNZ 	loop		; Check timer lo-byte, continue loop if not 0
+   98/  39 : 1F                         	INC	RF		; If the low byte is zero, increment the
+   99/  3A :                            				;   workspace register by one
+  100/  3A : 8F                         	GLO	RF		; Get new value from the register
+  101/  3B : F3                         	XOR			; Exclusive OR with predetermined value
+  102/  3C : 3A 32                      	BNZ	loop		; Check if RF is 2; continue loop if not
+  103/  3E :                            	; end of the interval loop --------------------------------------------
+  104/  3E :                            time_has_elapsed:
+  105/  3E : 7A                         	REQ			; reset Q
+  106/  3F :                            	; determine what to do next -------------------------------------------
+  107/  3F : 3F 3F                      	BN4	$		; Loop until IN is pressed
+  108/  41 : 37 41                      	B4	$		; Loop until IN is released
+  109/  43 : 6C                         	INP	4		; Read the switches into (tmp)
+  110/  44 : 8F                         	GLO	RF		; RF has the displayed value
+  111/  45 : F3                         	XOR			; Exclusive OR with (tmp)
+  112/  46 : 3A 00                      	BNZ	start		; If it does not match, run the program again
+  113/  48 :                            				; otherwise fall through to the Monitor program
+  114/  48 :                            	; following emulates Reset --------------------------------------------
+  115/  48 : D0                         	SEP	0		; Reset P pointer
+  116/  49 : E0                         	SEX	0		; Reset X pointer
+  117/  4A : C0 80 00                   	LBR	monitor		; Go to ROM
+  118/  4D :                            	; End	
+  119/  4D :                            
+  120/  4D :                            error_sub:
+ AS V1.42 Beta [Bld 281] - Source File combination-lock-interval-timer.asm - Page 3 - 28/01/25 23:33:14
+
+
+  121/  4D : F8 EE                      	LDI	0xEE		; Load message "EE"
+  122/  4F : 5D                         	STR	RD		; Store it to (tmp)
+  123/  50 : 64                         	OUT	4		; Output the message from (tmp), RD++
+  124/  51 : BF                         	PHI	RF		; Also, put it into the high part of R4
+  125/  52 : 2D                         	DEC	RD		; RD-- to restore RD
+  126/  53 :                            loop_ee:
+  127/  53 : 2F                         	DEC	RF		; Decrement R4
+  128/  54 : 9F                         	GHI	RF		; Loadi the hi part of R4
+  129/  55 : 3A 53                      	BNZ	loop_ee		; Continue the loop if it is not 0
+  130/  57 : 30 00                      	BR	start		; Go to start
+  131/  59 : 00                         tmp:	DB	0
+  132/  5A :                            
+  133/8000 :                            	ORG	0x8000
+  134/8000 :                            monitor:
+  135/8000 :                            
+  136/8000 :                            
+ AS V1.42 Beta [Bld 281] - Source File combination-lock-interval-timer.asm - Page 4 - 28/01/25 23:33:14
+
+
+  Symbol Table (* = unused):
+  --------------------------
+
+*ARCHITECTURE :                                      "x86_64-unknown-linux" - |
+*CASESENSITIVE :                  0 - | *CONSTPI :     3.141592653589793239 - |
+*DATE :                  "28/01/25" - |  ERROR_SUB :                     4D C |
+*FALSE :                          0 - | *FLOATMAX :   1.18973149535725E4932 - |
+*HAS64 :                          1 - | *INTERVAL_TIMER :                2C C |
+*LISTON :                         1 - |  LOOP :                          32 C |
+ LOOP_EE :                       53 C | *LOOP_PARAM :                    2D C |
+*MACEXP :                         7 - | *MOMCPU :                      1802 - |
+*MOMCPUNAME :                "1802" - |  MONITOR :                     8000 C |
+*NESTMAX :                      100 - | *R0 :                             0 - |
+*R1 :                             1 - | *R2 :                             2 - |
+*R3 :                             3 - | *R4 :                             4 - |
+*R5 :                             5 - | *R6 :                             6 - |
+*R7 :                             7 - | *R8 :                             8 - |
+*R9 :                             9 - | *RA :                            0A - |
+*RB :                            0B - | *RC :                            0C - |
+ RD :                            0D - |  RE :                            0E - |
+*RELAXED :                        1 - |  RF :                            0F - |
+ START :                          0 C | *TIME :                  "23:33:14" - |
+*TIME_HAS_ELAPSED :              3E C |  TMP :                           59 C |
+*TRUE :                           1 - | *VERSION :                     142F - |
+
+     41 symbols
+     32 unused symbols
+
+ AS V1.42 Beta [Bld 281] - Source File combination-lock-interval-timer.asm - Page 5 - 28/01/25 23:33:14
+
+
+  Code Pages:
+  ----------
+
+STANDARD (0 changed characters)
+
+1 code page
+
+0.00 seconds assembly time
+
+    136 lines source file
+      2 passes
+      0 errors
+      0 warnings

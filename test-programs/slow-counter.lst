@@ -1,0 +1,88 @@
+ AS V1.42 Beta [Bld 281] - Source File slow-counter.asm - Page 1 - 28/01/25 23:33:14
+
+
+    1/   0 :                            ; -----------------------------------------------------------------------------
+    2/   0 :                            ; SPDX-FileCopyrightText: © 2024 Damir Maleničić,
+    3/   0 :                            ; SPDX-License-Identifier: MIT
+    4/   0 :                            ; -----------------------------------------------------------------------------
+    5/   0 :                            ; The port of Kill the Bit game for Altair by Dean McDaniel, May 15, 1975. 
+    6/   0 :                            ; <https://altairclone.com/downloads/killbits.pdf>
+    7/   0 :                            ; -----------------------------------------------------------------------------
+    8/   0 :                            ; Kill the rotating bit. If you miss the lit bit, another bit turns on, leaving
+    9/   0 :                            ; two bits to destroy.
+   10/   0 :                            ; Quickly toggle the correct switch on and off at the right moment.
+   11/   0 :                            ; Don't leave the switch in the on position, or the game will pause.
+   12/   0 :                            ; -----------------------------------------------------------------------------
+   13/   0 :                            ; A slow counter in 10 bytes: EF 80 BF AF 9E 5F 1E 64 30 01" by Dave Ruske
+   14/   0 :                            ; https://www.retrotechnology.com/memship/memship.html#soft
+   15/   0 :                            ; -----------------------------------------------------------------------------
+   16/   0 :                            ; I use [The Macro Assembler AS](http://john.ccac.rwth-aachen.de:8000/as/), but
+   17/   0 :                            ; the code should be reasonably portable to other 1802 assemblers.
+   18/   0 :                            ; The following are the assembling and linking instructions:
+   19/   0 :                            ; ```
+   20/   0 :                            ; asl -cpu 1802 -L slow-counter.asm
+   21/   0 :                            ; p2hex slow-counter.p slow-counter.hex 
+   22/   0 :                            ; ```
+   23/   0 :                            ; The resulting `slow-counter.hex` file can be loaded into The 1802 Membership
+   24/   0 :                            ; Card using monitor L command. On Linux, run `cat slow-counter.hex`, copy
+   25/   0 :                            ; the output, and paste it to the monitor, then type the `R0000` command in the
+   26/   0 :                            ; monitor or just toggle in CLEAR and RUN at the board :-).
+   27/   0 :                            ; -----------------------------------------------------------------------------
+   28/   0 :                            
+   29/   0 :                            
+   30/   0 :                            	RELAXED	ON
+   31/   0 :                            
+   32/   0 :                            
+   33/   0 : =0H                        R0	EQU	0
+   34/   0 : =0EH                       RE	EQU	14
+   35/   0 : =0FH                       RF	EQU	15
+   36/   0 :                            
+   37/   0 : EF                         	SEX	RF	; make F register a memory pointer
+   38/   1 :                            loop:
+   39/   1 : 80                         	GLO	R0	; load the low part of R0 (0 after reset)
+   40/   2 : BF                         	PHI	RF	; put it to the high byte of RF
+   41/   3 : AF                         	PLO	RF 	; and to the low part of RF, RF is now 0000
+   42/   4 : 9E                         	GHI	RE 	; load the high part of RE
+   43/   5 : 5F                         	STR	RF 	; store it to location 0000
+   44/   6 : 1E                         	INC	RE 	; increase RE
+   45/   7 : 64                         	OUT	4 	; display the result
+   46/   8 : 30 01                      	BR	loop 	; loop
+   47/   A :                            
+   48/   A :                            
+ AS V1.42 Beta [Bld 281] - Source File slow-counter.asm - Page 2 - 28/01/25 23:33:14
+
+
+  Symbol Table (* = unused):
+  --------------------------
+
+*ARCHITECTURE :                                      "x86_64-unknown-linux" - |
+*CASESENSITIVE :                  0 - | *CONSTPI :     3.141592653589793239 - |
+*DATE :                  "28/01/25" - | *FALSE :                          0 - |
+*FLOATMAX :   1.18973149535725E4932 - | *HAS64 :                          1 - |
+*LISTON :                         1 - |  LOOP :                           1 C |
+*MACEXP :                         7 - | *MOMCPU :                      1802 - |
+*MOMCPUNAME :                "1802" - | *NESTMAX :                      100 - |
+ R0 :                             0 - |  RE :                            0E - |
+*RELAXED :                        1 - |  RF :                            0F - |
+*TIME :                  "23:33:14" - | *TRUE :                           1 - |
+*VERSION :                     142F - |
+
+     20 symbols
+     16 unused symbols
+
+ AS V1.42 Beta [Bld 281] - Source File slow-counter.asm - Page 3 - 28/01/25 23:33:14
+
+
+  Code Pages:
+  ----------
+
+STANDARD (0 changed characters)
+
+1 code page
+
+0.00 seconds assembly time
+
+     48 lines source file
+      1 pass
+      0 errors
+      0 warnings

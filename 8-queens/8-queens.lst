@@ -1,0 +1,415 @@
+ AS V1.42 Beta [Bld 281] - Source File 8-queens.asm - Page 1 - 29/01/25 18:19:31
+
+
+       1/   0 :                         ; -----------------------------------------------------------------------------
+       2/   0 :                         ; SPDX-FileCopyrightText: © 2024 Damir Maleničić,
+       3/   0 :                         ; SPDX-License-Identifier: MIT
+       4/   0 :                         ; -----------------------------------------------------------------------------
+       5/   0 :                         
+       6/   0 :                         
+       7/   0 :                         ; -----------------------------------------------------------------------------
+       8/   0 :                         ; This version is written for
+       9/   0 :                         ; [The Macro Assembler AS](http://john.ccac.rwth-aachen.de:8000/as/), but
+      10/   0 :                         ; the code should be portable to other 1802 assemblers.
+      11/   0 :                         ; The following are the assembling and linking instructions:
+      12/   0 :                         ; ```
+      13/   0 :                         ; asl -cpu 1802 -L 8-queens.asm
+      14/   0 :                         ; p2hex 8-queens.p 8-queens.hex
+      15/   0 :                         ; ```
+      16/   0 :                         ; -----------------------------------------------------------------------------
+      17/   0 :                         ; Register convention imposed by monitor:
+      18/   0 :                         ; R0 - reset program counter and SP, PC and SP for user program invoked with 'R' command, DMA memory pointer
+      19/   0 :                         ; R1 - interrupt program counter
+      20/   0 :                         ; R2 - stack pointer for main and interrupt routines
+      21/   0 :                         ; R3 - program counter for main routine
+      22/   0 :                         ; R4 - program counter for SCRT subroutine calls
+      23/   0 :                         ; R5 - program counter for SCRT subroutine returns
+      24/   0 :                         ; R6 - SCRT return address stack
+      25/   0 :                         ; R7 - a pointer to a string to be written when invoking 8526
+      26/   0 :                         ; RB.HI - holds the input character classification
+      27/   0 :                         ; RB.LO - holds the input character, or the output character
+      28/   0 :                         ; RE.HI - holds 01
+      29/   0 :                         ; RE.LO - holds the baud rate indicator
+      30/   0 :                         ; -----------------------------------------------------------------------------
+      31/   0 :                         ; Monitor Routines Used in This Program
+      32/   0 :                         ; 8000 - the entry point, waits till IN is released and then jumps to 8B00 for real entry point
+      33/   0 :                         ; 8005 - reads a character
+      34/   0 :                         ; 80A3 - reads a character and classifies it as:
+      35/   0 :                         ;        00 - CR, 1 - space, 02 - ESC, 03 - digit, 04 - hex-letter or FF -  other
+      36/   0 :                         ; 8513 - writes a sequence ' ', CR, LF on the screen
+      37/   0 :                         ; 8519 - writes a sequence CR, LF on the screen (part of 8513 but sometimes called separately)
+      38/   0 :                         ; 8526 - writes a string to the screen, R7 points to the string, R7 is preserved
+      39/   0 :                         ; 859B - writes ' ' on the screen
+      40/   0 :                         ; 8ADB - SCRT call a subroutine (invoked with R4 as PC)
+      41/   0 :                         ; 8AED - SCRT return from a subroutine (invoked with R5 as PC)
+      42/   0 :                         ; -----------------------------------------------------------------------------
+      43/   0 :                         
+      44/   0 :                         
+      45/   0 :                         	RELAXED	ON
+      46/   0 :                         
+      47/   0 :                         
+      48/   0 :                         ; include the bit manipulation functions --------------------------------------
+      49/   0 :                         ; This file defines a couple of bit-oriented functions that might be hardwired
+      50/   0 :                         ; for other assemblers.
+      51/   0 :                         ; A code uses `hi()` and `lo()` operators that `asl` implements as user-defined
+      52/   0 :                         ; function.
+      53/   0 :                         ; The source for `bitfuncs.inc` is provided to help port those functions to the
+      54/   0 :                         ; assembler of your choice.
+      55/   0 :                         
+      56/   0 :                         
+      57/   0 :                         	INCLUDE "bitfuncs.inc"
+(1)    1/   0 : =>UNDEFINED             		ifndef   bitfuncsinc    ; avoid multiple inclusion
+(1)    2/   0 : =1H                     bitfuncsinc     equ      1
+(1)    3/   0 :                         
+ AS V1.42 Beta [Bld 281] - Source File 8-queens.asm(bitfuncs.inc) - Page 2 - 29/01/25 18:19:31
+
+
+(1)    4/   0 :                                         save
+(1)   77/   0 : ALL                                     restore                 ; allow listing again
+(1)   78/   0 :                         
+(1)   79/   0 : [1]                                     endif			; bitfuncsinc
+(1)   80/   0 :                         
+(1)   81/   0 :                         
+      58/   0 :                         
+      59/   0 :                         
+      60/   0 :                         ; register aliases
+      61/   0 : =0H                     R0	EQU	0
+      62/   0 : =1H                     R1	EQU	1
+      63/   0 : =2H                     R2	EQU	2
+      64/   0 : =3H                     R3	EQU	3
+      65/   0 : =4H                     R4	EQU	4
+      66/   0 : =5H                     R5	EQU	5
+      67/   0 : =6H                     R6	EQU	6
+      68/   0 : =7H                     R7	EQU	7
+      69/   0 : =8H                     R8	EQU	8
+      70/   0 : =9H                     R9	EQU	9
+      71/   0 : =0AH                    RA	EQU	10
+      72/   0 : =0BH                    RB	EQU	11
+      73/   0 : =0CH                    RC	EQU	12
+      74/   0 : =0DH                    RD	EQU	13
+      75/   0 : =0EH                    RE	EQU	14
+      76/   0 : =0FH                    RF	EQU	15
+      77/   0 :                         
+      78/   0 :                         
+      79/   0 :                         	ORG	0
+      80/   0 :                         
+      81/   0 :                         
+      82/   0 :                         	; -----------------------------------------------------------------------------
+      83/   0 :                         	; Initialize the program
+      84/   0 :                         	; -----------------------------------------------------------------------------
+      85/   0 :                         	; When started after reset, or by executing the monitor R command:
+      86/   0 :                         	; R0 is set to be both the program counter and the stack pointer
+      87/   0 :                         	; R1 is  pointer.
+      88/   0 :                         	; R2 is will become stack pointer in a case of an interrupt
+      89/   0 :                         	; Following section configures the registers:
+      90/   0 :                         	; R2 to point to the area that will become a stack pointer when control is passed to main
+      91/   0 :                         	; R3 to point to main, it will become a program counter
+      92/   0 :                         	; R4 will point to SCRT call routine
+      93/   0 :                         	; R5 will point to SCRT return routine
+      94/   0 :                         	; R6 will point to SCRT stack
+      95/   0 :                         start:
+      96/   0 :                         	; initialize R4 to 0x8ADB and R5 to 0x8AED to enable SCRT
+      97/   0 : F8 8A                   	LDI	hi(scrt_call)
+      98/   2 : B4                      	PHI	R4
+      99/   3 : B5                      	PHI	R5
+     100/   4 : F8 DB                   	LDI	lo(scrt_call)
+     101/   6 : A4                      	PLO	R4
+     102/   7 : F8 ED                   	LDI	lo(scrt_return)
+     103/   9 : A5                      	PLO	R5
+     104/   A :                         	; initialize R6 to SCRT_stack
+     105/   A : F8 01                   	LDI	hi(scrt_stack)
+     106/   C : B6                      	PHI	R6
+     107/   D : F8 7F                   	LDI	lo(scrt_stack)
+     108/   F : A6                      	PLO	R6
+     109/  10 :                         
+     110/  10 :                         	; configure R3 to point to the main
+     111/  10 : F8 21                   	LDI	lo(main)
+ AS V1.42 Beta [Bld 281] - Source File 8-queens.asm - Page 3 - 29/01/25 18:19:31
+
+
+     112/  12 : A3                      	PLO	R3
+     113/  13 : 90                      	GHI	R0
+     114/  14 : B3                      	PHI	R3
+     115/  15 :                         
+     116/  15 :                         	; configure R2 to point to the stack
+     117/  15 : F8 01                   	LDI	hi(stack)
+     118/  17 : B2                      	PHI	R2
+     119/  18 : F8 FF                   	LDI	lo(stack)
+     120/  1A : A2                      	PLO	R2
+     121/  1B :                         
+     122/  1B :                         	; pass the control to main
+     123/  1B : E2                      	SEX	R2			; R2 is the stack pointer
+     124/  1C : D3                      	SEP	R3			; this will call main, while R0 still
+     125/  1D :                         
+     126/  1D :                         	; -----------------------------------------------------------------------------
+     127/  1D :                         	; The program exit point
+     128/  1D :                         	; -----------------------------------------------------------------------------
+     129/  1D :                         	; R0 is pointing to this location so when SEP 0 is executed at the end of main,
+     130/  1D :                         	; the program execution will resume at this point
+     131/  1D : E0                      	SEX	R0			; restore X register like on reset
+     132/  1E : C0 80 00                	LBR	monitor			; jump to monitor
+     133/  21 :                         
+     134/  21 :                         	; -----------------------------------------------------------------------------
+     135/  21 :                         	; The main routine
+     136/  21 :                         	; -----------------------------------------------------------------------------
+     137/  21 :                         	; System registers
+     138/  21 :                         	; R0 - DMA memory pointer
+     139/  21 :                         	; R1 - interrupt PC
+     140/  21 :                         	; R2 - SP/interrupt SP
+     141/  21 :                         	; R3 - PC
+     142/  21 :                         	; R4 - SCRT call PC
+     143/  21 :                         	; R5 - SCRT return PC
+     144/  21 :                         	; R6 - SCRT SP
+     145/  21 :                         	; Code registers
+     146/  21 :                         	; R7 - reserved for pointing to messages
+     147/  21 :                         	; R8 - points to chessboard row0
+     148/  21 :                         	; R9 - points to current row
+     149/  21 :                         main:
+     150/  21 :                         	;
+     151/  21 :                         
+     152/  21 :                         
+     153/  21 :                         
+     154/  21 :                         	; -----------------------------------------------------------------------------
+     155/  21 :                         	; Print the result
+     156/  21 :                         	; -----------------------------------------------------------------------------
+     157/  21 :                         	; Registers convention used by this application:
+     158/  21 :                         	; R8 - points to the current row
+     159/  21 :                         	; R9.HI - the number of chessboard fields in the current row to print
+     160/  21 :                         	; R9.LO - the working copy of the current chessboard row content
+     161/  21 :                         	; RA.HI - the number of rows to print
+     162/  21 :                         	; RA.LO - indicator if the current print is black or white
+     163/  21 :                         print_board:
+     164/  21 : F8 08                   	LDI	8			; number or chessboard rows to print
+     165/  23 : BA                      	PHI	RA			; store it to RA.HI
+     166/  24 : F8 01                   	LDI	hi(row1)		; get address of the first row
+     167/  26 : B8                      	PHI	R8
+     168/  27 : F8 00                   	LDI	lo(row1)
+     169/  29 : A8                      	PLO	R8			; R8 points to the first row
+     170/  2A :                         print_row:
+     171/  2A : D4                      	SEP	R4			; print row, on return R8 will point to the next row
+ AS V1.42 Beta [Bld 281] - Source File 8-queens.asm - Page 4 - 29/01/25 18:19:31
+
+
+     172/  2B : 00                      	DB	hi(print_current_row)
+     173/  2C : 40                      	DB	lo(print_current_row)
+     174/  2D : 9A                      	GHI	RA
+     175/  2E : FF 01                   	SMI	1
+     176/  30 : BA                      	PHI	RA
+     177/  31 : 3A 2A                   	BNZ	print_row
+     178/  33 :                         	; inform an end-user to press Enter to return to monitor
+     179/  33 : F8 25                   	LDI	lo(enter_to_ret)
+     180/  35 : A7                      	PLO	R7
+     181/  36 : F8 01                   	LDI	hi(enter_to_ret)
+     182/  38 : B7                      	PHI	R7
+     183/  39 : D4                      	SEP	R4
+     184/  3A : 85                      	DB	hi(puts)
+     185/  3B : 26                      	DB	lo(puts)
+     186/  3C :                         
+     187/  3C :                         	; -----------------------------------------------------------------------------
+     188/  3C :                         	; return the control to monitor
+     189/  3C :                         	; -----------------------------------------------------------------------------
+     190/  3C :                         return_to_monitor:
+     191/  3C : D0                      	SEP	R0
+     192/  3D :                         
+     193/  3D :                         
+     194/  3D :                         check_if_valid_position_ret:
+     195/  3D : D5                      	SEP	R5
+     196/  3E :                         check_if_valid_position:
+     197/  3E : 30 3D                   	BR 	check_if_valid_position_ret
+     198/  40 :                         
+     199/  40 :                         
+     200/  40 :                         print_current_row:
+     201/  40 :                         	; load page holding strings representing board content to R7 hi, R7 low will depend on content to print
+     202/  40 : F8 01                   	LDI	hi(board_ptr_strs)
+     203/  42 : B7                      	PHI	R7
+     204/  43 :                         	; initialize field counter, row pointer, black-white indicator
+     205/  43 : F8 08                   	LDI	8	; 8 chessboard fields in a row
+     206/  45 : B9                      	PHI	R9	; R9.HI holds a number of chessboard fields in a row to print
+     207/  46 : 48                      	LDA	R8	; R8 points to the next row
+     208/  47 : A9                      	PLO	R9	; R9.LO holds ca working opy of the current row
+     209/  48 : 88                      	GLO	R8	; odd or even row, odd rows start with a white cell
+     210/  49 : FA 01                   	ANI	01	; is even or odd? row
+     211/  4B : AA                      	PLO	RA	; store this info in RA
+     212/  4C : 32 57                   	BZ	print_current_field	; if even skip sending invert video esc sequence
+     213/  4E :                         print_esc_inv:
+     214/  4E :                         	; print invert video escape sequence
+     215/  4E : F8 01                   	LDI	hi(esc_inv)
+     216/  50 : B7                      	PHI	R7
+     217/  51 : F8 08                   	LDI	lo(esc_inv)
+     218/  53 : A7                      	PLO	R7
+     219/  54 : D4                      	SEP	R4
+     220/  55 : 85                      	DB	hi(puts)
+     221/  56 : 26                      	DB	lo(puts)
+     222/  57 :                         print_current_field:
+     223/  57 :                         	; determine the current field content depending if corresponding row bit is 1 (queen) or zero (empty field)
+     224/  57 : 89                      	GLO	R9		; get a working copy of the current row
+     225/  58 : FE                      	SHL			; shift D left putting msb in the DF
+     226/  59 : A9                      	PLO	R9		; store new state of the working copy of the current row
+     227/  5A : 33 61                   	BDF	print_queen	; if msb was 1 the field contains the queen
+     228/  5C :                         	; get string representing an empty field into R7
+     229/  5C : F8 1E                   	LDI	lo(field)
+     230/  5E : A7                      	PLO	R7
+     231/  5F : 30 64                   	BR	print_field_content
+ AS V1.42 Beta [Bld 281] - Source File 8-queens.asm - Page 5 - 29/01/25 18:19:31
+
+
+     232/  61 :                         print_queen:
+     233/  61 :                         	; get string representing a field with queen into R7
+     234/  61 : F8 12                   	LDI	lo(queen)
+     235/  63 : A7                      	PLO	R7
+     236/  64 :                         print_field_content:
+     237/  64 :                         	; print the current field
+     238/  64 : D4                      	SEP	R4
+     239/  65 : 85                      	DB	hi(puts)
+     240/  66 : 26                      	DB	lo(puts)
+     241/  67 :                         	; undo the inverse video and bold-face font if either or both were set by printing norm esc sequence
+     242/  67 : F8 0D                   	LDI	lo(esc_norm)
+     243/  69 : A7                      	PLO	R7
+     244/  6A : D4                      	SEP	R4
+     245/  6B : 85                      	DB	hi(puts)
+     246/  6C : 26                      	DB	lo(puts)
+     247/  6D :                         print_next_field:
+     248/  6D :                         	; prepare for printing the next field
+     249/  6D : 99                      	GHI	R9		; get number of fields to print in the current row
+     250/  6E : FF 01                   	SMI	1		; subtract 1
+     251/  70 : 32 7B                   	BZ	print_crlf_and_ret	; if the result is 0 print <CR><LF> and jump to subroutine return code sequence
+     252/  72 : B9                      	PHI	R9		; store the calculated number of fields to print
+     253/  73 : 8A                      	GLO	RA		; get withe-black field indicator
+     254/  74 : FB 01                   	XRI	1		; invert it
+     255/  76 : AA                      	PLO	RA		; store the result
+     256/  77 : 32 57                   	BZ	print_current_field	; if black go to printing a field content
+     257/  79 : 30 4E                   	BR	print_esc_inv	; if white, go to printing video invert esc sequence
+     258/  7B :                         print_crlf_and_ret:
+     259/  7B :                         	; print <CR><LF> sequence
+     260/  7B : F8 01                   	LDI	hi(crlf)
+     261/  7D : B7                      	PHI	R7
+     262/  7E : F8 22                   	LDI	lo(crlf)
+     263/  80 : A7                      	PLO	R7
+     264/  81 : D4                      	SEP	R4
+     265/  82 : 85                      	DB	hi(puts)
+     266/  83 : 26                      	DB	lo(puts)
+     267/  84 :                         	; go to SCRT returning from a subroutine sequence
+     268/  84 : D5                      	SEP	R5
+     269/  85 :                         
+     270/  85 :                         
+     271/ 100 :                         	ORG	0x0100
+     272/ 100 :                         	; -- rows
+     273/ 100 : 80                      row1:	DB	0b10000000
+     274/ 101 : 10                      row2:	DB	0b00010000
+     275/ 102 : 40                      row3:	DB	0b01000000
+     276/ 103 : 01                      row4:	DB	0b00000001
+     277/ 104 : 08                      row5:	DB	0b00001000
+     278/ 105 : 02                      row6:	DB	0b00000010
+     279/ 106 : 20                      row7:	DB	0b00100000
+     280/ 107 : 04                      row8:	DB	0b00000100
+     281/ 108 :                         
+     282/ 108 :                         board_ptr_strs:
+     283/ 108 : 1B 5B 37 6D 00          esc_inv:	DB	"\x1B[7m\0"
+     284/ 10D : 1B 5B 30 6D 00          esc_norm:	DB	"\x1B[0m\0"
+     285/ 112 : 1B 5B 31 6D 20 51 20 1B queen		DB	"\x1B[1m Q \x1B[2m\0"
+          11A : 5B 32 6D 00            
+     286/ 11E : 20 20 20 00             field		DB	"   \0"
+     287/ 122 : 0D 0A 00                crlf		DB	"\r\n\0"
+     288/ 125 : 0D 0A 50 72 65 73 73 20 enter_to_ret	DB	"\r\nPress ENTER to return to Monitor\r\n\0"
+          12D : 45 4E 54 45 52 20 74 6F
+          135 : 20 72 65 74 75 72 6E 20
+ AS V1.42 Beta [Bld 281] - Source File 8-queens.asm - Page 6 - 29/01/25 18:19:31
+
+
+          13D : 74 6F 20 4D 6F 6E 69 74
+          145 : 6F 72 0D 0A 00         
+     289/ 14A :                         
+     290/ 17F :                         	ORG	0x017F		; SCRT stack is from 0x017F..0x0100
+     291/ 17F :                         scrt_stack:
+     292/ 17F :                         
+     293/ 1FF :                         	ORG	0x01FF		; R2 stack is from 0x01FF..0x0180
+     294/ 1FF :                         stack:
+     295/ 1FF :                         
+     296/ 1FF :                         
+     297/8000 :                         	ORG	0x8000
+     298/8000 :                         monitor:
+     299/8000 :                         
+     300/8526 :                         	ORG	0x8526
+     301/8526 :                         puts:
+     302/8526 :                         
+     303/8ADB :                         	ORG	0x8ADB
+     304/8ADB :                         scrt_call:
+     305/8ADB :                         
+     306/8AED :                         	ORG	0x8AED
+     307/8AED :                         scrt_return:
+     308/8AED :                         
+ AS V1.42 Beta [Bld 281] - Source File 8-queens.asm - Page 7 - 29/01/25 18:19:31
+
+
+  Symbol Table (* = unused):
+  --------------------------
+
+*ARCHITECTURE :                                      "x86_64-unknown-linux" - |
+*BITFUNCSINC :                    1 - |  BOARD_PTR_STRS :               108 C |
+*CASESENSITIVE :                  0 - | *CHECK_IF_VALID_POSITION :       3E C |
+ CHECK_IF_VALID_POSITION_RET :   3D C | *CONSTPI :     3.141592653589793239 - |
+ CRLF :                         122 C | *DATE :                  "29/01/25" - |
+ ENTER_TO_RET :                 125 C |  ESC_INV :                      108 C |
+ ESC_NORM :                     10D C | *FALSE :                          0 - |
+ FIELD :                        11E C | *FLOATMAX :   1.18973149535725E4932 - |
+*HAS64 :                          1 - | *LISTON :                         1 - |
+*MACEXP :                         7 - |  MAIN :                          21 C |
+*MOMCPU :                      1802 - | *MOMCPUNAME :                "1802" - |
+ MONITOR :                     8000 C | *NESTMAX :                      100 - |
+*PRINT_BOARD :                   21 C |  PRINT_CRLF_AND_RET :            7B C |
+ PRINT_CURRENT_FIELD :           57 C |  PRINT_CURRENT_ROW :             40 C |
+ PRINT_ESC_INV :                 4E C |  PRINT_FIELD_CONTENT :           64 C |
+*PRINT_NEXT_FIELD :              6D C |  PRINT_QUEEN :                   61 C |
+ PRINT_ROW :                     2A C |  PUTS :                        8526 C |
+ QUEEN :                        112 C |  R0 :                             0 - |
+*R1 :                             1 - |  R2 :                             2 - |
+ R3 :                             3 - |  R4 :                             4 - |
+ R5 :                             5 - |  R6 :                             6 - |
+ R7 :                             7 - |  R8 :                             8 - |
+ R9 :                             9 - |  RA :                            0A - |
+*RB :                            0B - | *RC :                            0C - |
+*RD :                            0D - | *RE :                            0E - |
+*RELAXED :                        1 - | *RETURN_TO_MONITOR :             3C C |
+*RF :                            0F - |  ROW1 :                         100 C |
+*ROW2 :                         101 C | *ROW3 :                         102 C |
+*ROW4 :                         103 C | *ROW5 :                         104 C |
+*ROW6 :                         105 C | *ROW7 :                         106 C |
+*ROW8 :                         107 C |  SCRT_CALL :                   8ADB C |
+ SCRT_RETURN :                 8AED C |  SCRT_STACK :                   17F C |
+ STACK :                        1FF C | *START :                          0 C |
+*TIME :                  "18:19:31" - | *TRUE :                           1 - |
+*VERSION :                     142F - |
+
+     68 symbols
+     35 unused symbols
+
+ AS V1.42 Beta [Bld 281] - Source File 8-queens.asm - Page 8 - 29/01/25 18:19:31
+
+
+  Defined Functions:
+  ------------------
+
+ROTRN                                 | ROTLN                                
+SHRN                                  | SHLN                                 
+GETBIT                                | EVEN                                 
+ODD                                   | LOWORD                               
+HIWORD                                | LO                                   
+HI                                    | CUTOUT                               
+INVMASK                               | MASK                                 
+
+ AS V1.42 Beta [Bld 281] - Source File 8-queens.asm - Page 9 - 29/01/25 18:19:31
+
+
+  Code Pages:
+  ----------
+
+STANDARD (0 changed characters)
+
+1 code page
+
+0.04 seconds assembly time
+
+    389 lines source file
+      2 passes
+      0 errors
+      0 warnings

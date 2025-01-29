@@ -1,0 +1,212 @@
+ AS V1.42 Beta [Bld 281] - Source File ms20ansj-print-hello-world.asm - Page 1 - 28/01/25 23:33:14
+
+
+       1/   0 :                         ; -----------------------------------------------------------------------------
+       2/   0 :                         ; Print `Hello, World.` using print routine from MS20ANSJ Monitor
+       3/   0 :                         ; -----------------------------------------------------------------------------
+       4/   0 :                         
+       5/   0 :                         ; -----------------------------------------------------------------------------
+       6/   0 :                         ; This program is written for
+       7/   0 :                         ; [The Macro Assembler AS](http://john.ccac.rwth-aachen.de:8000/as/), but
+       8/   0 :                         ; the code should be portable to other 1802 assemblers.
+       9/   0 :                         ; The following are the assembling and linking instructions:
+      10/   0 :                         ; ```
+      11/   0 :                         ; asl -cpu 1802 -L print-hello-world.asm
+      12/   0 :                         ; p2hex print-hello-world.p print-hello-world.hex
+      13/   0 :                         ; ```
+      14/   0 :                         ; -----------------------------------------------------------------------------
+      15/   0 :                         
+      16/   0 :                         
+      17/   0 :                         	RELAXED ON
+      18/   0 :                         
+      19/   0 :                         
+      20/   0 :                         ; include the bit manipulation functions --------------------------------------
+      21/   0 :                         ; This file defines a couple of bit-oriented functions that might be hardwired
+      22/   0 :                         ; for other assemblers.
+      23/   0 :                         ; A code uses `hi()` and `lo()` operators that `asl` implements as user-defined
+      24/   0 :                         ; function.     
+      25/   0 :                         ; The source for `bitfuncs.inc` is provided to help port those functions to the
+      26/   0 :                         ; assembler of your choice.
+      27/   0 :                         
+      28/   0 :                         
+      29/   0 :                         	INCLUDE "bitfuncs.inc"
+(1)    1/   0 : =>UNDEFINED             		ifndef   bitfuncsinc    ; avoid multiple inclusion
+(1)    2/   0 : =1H                     bitfuncsinc     equ      1
+(1)    3/   0 :                         
+(1)    4/   0 :                                         save
+(1)   77/   0 : ALL                                     restore                 ; allow listing again
+(1)   78/   0 :                         
+(1)   79/   0 : [1]                                     endif			; bitfuncsinc
+(1)   80/   0 :                         
+(1)   81/   0 :                         
+      30/   0 :                         
+      31/   0 :                         
+      32/   0 : =0H                     R0	EQU	0
+      33/   0 : =1H                     R1	EQU	1
+      34/   0 : =2H                     R2	EQU	2
+      35/   0 : =3H                     R3	EQU	3
+      36/   0 : =4H                     R4	EQU	4
+      37/   0 : =5H                     R5	EQU	5
+      38/   0 : =6H                     R6	EQU	6
+      39/   0 : =7H                     R7	EQU	7
+      40/   0 : =0BH                    RB	EQU	11
+      41/   0 : =0CH                    RC	EQU	12
+      42/   0 : =0EH                    RE	EQU	14
+      43/   0 :                         
+      44/   0 :                         
+      45/   0 :                         	; assume invoked from MS20ANSJ monitor with 'R0000' 
+      46/   0 :                         	; P=0, X=0
+      47/   0 :                         	; R2            SCRT routines assume R2 is stack pointer
+      48/   0 :                         	; R3            SCRT routines assume R3 is program counter
+      49/   0 :                         	; R4=8ADB	points to SCRT call procedure
+      50/   0 :                         	; R5=8AED	points to SCRT return procedure
+      51/   0 :                         	; R6            stack for SCRT return addresses
+ AS V1.42 Beta [Bld 281] - Source File ms20ansj-print-hello-world.asm - Page 2 - 28/01/25 23:33:14
+
+
+      52/   0 :                         	; R7		points to a string to be written by monitor routine on 8526
+      53/   0 :                         	; hi(RE)
+      54/   0 :                         	; 8526		the print string routine
+      55/   0 :                         
+      56/   0 :                         
+      57/   0 :                         	ORG	0
+      58/   0 :                         
+      59/   0 :                         
+      60/   0 :                         	; initialize R4 to 8ADBH and R5 to 8AEDH to enable SCRT
+      61/   0 : F8 8A                   	LDI	0x8A
+      62/   2 : B4                      	PHI	R4
+      63/   3 : B5                      	PHI	R5
+      64/   4 : F8 DB                   	LDI	0xDB
+      65/   6 : A4                      	PLO	R4
+      66/   7 : F8 ED                   	LDI	0xED
+      67/   9 : A5                      	PLO	R5
+      68/   A :                         	; initialize R6 to 0100H
+      69/   A : 90                      	GHI	R0
+      70/   B : A6                      	PLO	R6
+      71/   C : F8 01                   	LDI	1
+      72/   E : B6                      	PHI	R6
+      73/   F :                         
+      74/   F :                         	; set R3 to main 
+      75/   F : F8 1A                   	LDI	lo(main)
+      76/  11 : A3                      	PLO	R3
+      77/  12 : 90                      	GHI	R0
+      78/  13 : B3                      	PHI	R3
+      79/  14 :                         
+      80/  14 :                         	; pass the control to main
+      81/  14 : E2                      	SEX	R2
+      82/  15 : D3                      	SEP	R3			; this will call main, while R0 still
+      83/  16 :                         	; when SEP 0 is executed at the end of main, program will resume at this point
+      84/  16 :                         
+      85/  16 :                         reset:					; following is the exit location
+      86/  16 : E0                      	SEX	R0			; restore X register like on reset
+      87/  17 : C0 80 00                	LBR	monitor			; jump to monitor
+      88/  1A :                         
+      89/  1A :                         main:
+      90/  1A : 93                      	GHI	R3
+      91/  1B : B7                      	PHI	R7
+      92/  1C : F8 2D                   	LDI	lo(msg)
+      93/  1E : A7                      	PLO	R7
+      94/  1F :                         
+      95/  1F :                         loop:
+      96/  1F :                         	; print the message
+      97/  1F : D4                      	SEP	R4
+      98/  20 : 85                      	DB	0x85
+      99/  21 : 26                      	DB	0x26
+     100/  22 :                         
+     101/  22 :                         	; read user response
+     102/  22 :                         user_response:
+     103/  22 : D4                      	SEP	R4
+     104/  23 : 80                      	DB	0x80
+     105/  24 : A3                      	DB	0xA3
+     106/  25 :                         	; check if enter
+     107/  25 : 9B                      	GHI	RB
+     108/  26 : 32 1F                   	BZ	loop			; print message again
+     109/  28 :                         	; check if escape
+     110/  28 : FF 02                   	SMI	2
+     111/  2A : 3A 22                   	BNZ	user_response		; not escape, let user enter response again
+ AS V1.42 Beta [Bld 281] - Source File ms20ansj-print-hello-world.asm - Page 3 - 28/01/25 23:33:14
+
+
+     112/  2C :                         
+     113/  2C :                         return_to_monitor:
+     114/  2C :                         	; return the control to monitor
+     115/  2C : D0                      	SEP	R0
+     116/  2D :                         
+     117/  2D :                         msg:
+     118/  2D : 0D 0A 1B 5B 37 6D 48 65 	DB	"\r\n\x1B[7mHello, World.\x1B[0m\r\n..press ENTER to continue, or ESC and ENTER to return to the monitor\r\n\0"
+           35 : 6C 6C 6F 2C 20 57 6F 72
+           3D : 6C 64 2E 1B 5B 30 6D 0D
+           45 : 0A 2E 2E 70 72 65 73 73
+           4D : 20 45 4E 54 45 52 20 74
+           55 : 6F 20 63 6F 6E 74 69 6E
+           5D : 75 65 2C 20 6F 72 20 45
+           65 : 53 43 20 61 6E 64 20 45
+           6D : 4E 54 45 52 20 74 6F 20
+           75 : 72 65 74 75 72 6E 20 74
+           7D : 6F 20 74 68 65 20 6D 6F
+           85 : 6E 69 74 6F 72 0D 0A 00
+     119/  8D :                         
+     120/  8D :                         
+     121/8000 :                         	ORG	0x8000
+     122/8000 :                         
+     123/8000 :                         
+     124/8000 :                         monitor:
+     125/8000 :                         	END
+ AS V1.42 Beta [Bld 281] - Source File ms20ansj-print-hello-world.asm - Page 4 - 28/01/25 23:33:14
+
+
+  Symbol Table (* = unused):
+  --------------------------
+
+*ARCHITECTURE :                                      "x86_64-unknown-linux" - |
+*BITFUNCSINC :                    1 - | *CASESENSITIVE :                  0 - |
+*CONSTPI :     3.141592653589793239 - | *DATE :                  "28/01/25" - |
+*FALSE :                          0 - | *FLOATMAX :   1.18973149535725E4932 - |
+*HAS64 :                          1 - | *LISTON :                         1 - |
+ LOOP :                          1F C | *MACEXP :                         7 - |
+ MAIN :                          1A C | *MOMCPU :                      1802 - |
+*MOMCPUNAME :                "1802" - |  MONITOR :                     8000 C |
+ MSG :                           2D C | *NESTMAX :                      100 - |
+ R0 :                             0 - | *R1 :                             1 - |
+ R2 :                             2 - |  R3 :                             3 - |
+ R4 :                             4 - |  R5 :                             5 - |
+ R6 :                             6 - |  R7 :                             7 - |
+ RB :                            0B - | *RC :                            0C - |
+*RE :                            0E - | *RELAXED :                        1 - |
+*RESET :                         16 C | *RETURN_TO_MONITOR :             2C C |
+*TIME :                  "23:33:14" - | *TRUE :                           1 - |
+ USER_RESPONSE :                 22 C | *VERSION :                     142F - |
+
+     35 symbols
+     22 unused symbols
+
+ AS V1.42 Beta [Bld 281] - Source File ms20ansj-print-hello-world.asm - Page 5 - 28/01/25 23:33:14
+
+
+  Defined Functions:
+  ------------------
+
+ROTRN                                 | ROTLN                                
+SHRN                                  | SHLN                                 
+GETBIT                                | EVEN                                 
+ODD                                   | LOWORD                               
+HIWORD                                | LO                                   
+HI                                    | CUTOUT                               
+INVMASK                               | MASK                                 
+
+ AS V1.42 Beta [Bld 281] - Source File ms20ansj-print-hello-world.asm - Page 6 - 28/01/25 23:33:14
+
+
+  Code Pages:
+  ----------
+
+STANDARD (0 changed characters)
+
+1 code page
+
+0.01 seconds assembly time
+
+    208 lines source file
+      2 passes
+      0 errors
+      0 warnings

@@ -39,6 +39,9 @@
 ; -----------------------------------------------------------------------------
 
 
+	RELAXED	ON
+
+
 ; include the bit manipulation functions --------------------------------------
 ; This file defines a couple of bit-oriented functions that might be hardwired
 ; for other assemblers.
@@ -47,11 +50,13 @@
 ; The source for `bitfuncs.inc` is provided to help port those functions to the
 ; assembler of your choice.
 
-	include	"bitfuncs.inc"
+
+	INCLUDE	"bitfuncs.inc"
 
 
 ; register aliases ------------------------------------------------------------
 ; This may also be hardwired in the assembler of your choice.
+
 
 R0	EQU	0
 RB	EQU	11
@@ -60,13 +65,17 @@ RD	EQU	13
 RE	EQU	14
 RF	EQU	15
 
+
 ; Game Control Constants ------------------------------------------------------
-SPEED	EQU	50H	; change to speed up or slow down the game
+SPEED	EQU	0x40	; change to speed up or slow down the game
 
 
 	; For maximum portability, the `ORG` directive should point to the
 	; beginning of a RCA 1802 memory page (256 byte boundary).
-	ORG	0000H
+
+
+	ORG	0
+
 
 	; Initialization ------------------------------------------------------
 	; RF	- points to the (tmp) variable that is used while debouncing
@@ -81,15 +90,16 @@ SPEED	EQU	50H	; change to speed up or slow down the game
 	;
 	; It assumes that the program, subroutine, and variables are on the same
 	; memory page
+
 start:
 
-	LDI	lo((tmp))	; Set the (tmp) variable location
+	LDI	lo(tmp)		; Set the (tmp) variable location
 	PLO	RF		;  to the RF register.
-	LDI	lo((pattern))	; Set the (pattern) variable location
+	LDI	lo(pattern)	; Set the (pattern) variable location
 	PLO	RD		;  to the RD register.
-	LDI	lo((switches))	; Set the (switches) variable location
+	LDI	lo(switches)	; Set the (switches) variable location
 	PLO	RC		;  to the RC register.
-	LDI	lo((rd_switch))	; Set the (rd_switch) subroutine location
+	LDI	lo(rd_switch)	; Set the (rd_switch) subroutine location
 	PLO	RB		;  to the RB register.
 	LDI	hi($)		; To make the program relocatable:
 	PHI	RF		; - Load a correct `hi` part of the address of (tmp),
@@ -117,7 +127,7 @@ start:
 main:
 	; Display the Pattern -------------------------------------------------
 	SEX	RD		; Select `RD` as the output data pointer.
-	OUT	4		; Display the bit pattern, side-ffect `RD++`.
+	OUT	4		; Display the bit pattern, side-effect `RD++`.
 	DEC	RD		; Restore `RD` with `RD--`.
 	LDI	SPEED		; Initialize the delay loop control value.
 	PHI	RE		; Set the delay loop control value to `RE`.
@@ -163,17 +173,17 @@ msb0:
 	; When I find out how the monitor program prints messages, I will print
 	; the congratulations message and explain what to do next.
 	; For now, it is only the instructions written in this comment:
-	; - lit the leds 0 and 7, and flash LEDs 2-5.
+	; - lit the LEDs 0 and 7, and flash LEDs 2-5.
 	; - If the user toggles the switch for bit 7, continue with the next game.
 	; - If the user toggles the switch for bit 0, exit to the monitor.
-	LDI	0BDH		; Set MSB and LSB to 1, and the initial pattern
+	LDI	0xBD		; Set MSB and LSB to 1, and the initial pattern
 				; for flashing LEDs 2-5.
 	STR	RD		; Store the end of the game pattern to the
 				; variable (pattern).
 yes_no_loop:
 	SEX	RD		; Select register `RD` as the output data pointer,
 				; i.e., we are selecting the variable (pattern).
-	LDI	24H		; Define the mask for toggling bits 2-5.
+	LDI	0x24		; Define the mask for toggling bits 2-5.
 	XOR			; `XOR` the value in the variable (pattern) and
 				; the mask.
 	STR	RD		; Store the result to the variable (pattern).
@@ -187,7 +197,7 @@ yes_no_loop:
 				; indicating a toggled switch.
 
 	; Check If the Play Again or End of the Game Switch Has Been Toggled --
-	LDI	81H		; Define the mask for the relevant switches.
+	LDI	0x81		; Define the mask for the relevant switches.
 	AND			; Check if it has been toggled.
 	SHL			; Shift Left to move the MSB to DF (carry).
 	BDF	start		; The MSB was set, the play again switch was toggled.
@@ -207,7 +217,7 @@ reset:
 	OUT	4		; Output the variable (pattern) value to clear LEDs;
 				; side-effect RD++ is ignored during the reset.
 	SEX	0		; Reset the `X` register.
-	LBR	monitor		; Transfer the controll to the ROM at the location
+	LBR	monitor		; Transfer the control to the ROM at the location
 				; `8000H`.
 	; The End of The Main Loop of The Game --------------------------------	
 
@@ -262,10 +272,12 @@ check_sw_off:
 
 
 	; The Variables -------------------------------------------------------
-tmp:		DB	00H
-pattern:	DB	01H	; It holds a bit pattern that is to be displayed by LEDs.
-switches:	DB	00H	; It holds a bit pattern that represents a toggled switch.
 
-	ORG	8000H
+tmp:		DB	0
+pattern:	DB	1	; It holds a bit pattern that is to be displayed by LEDs.
+switches:	DB	0	; It holds a bit pattern that represents a toggled switch.
+
+
+	ORG	0x8000
+
 monitor:
-

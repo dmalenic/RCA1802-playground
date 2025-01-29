@@ -20,6 +20,9 @@
 ; -----------------------------------------------------------------------------
 
 
+	RELAXED	ON
+
+
 R1	EQU	1
 
 	ORG	0
@@ -27,7 +30,7 @@ R1	EQU	1
 start:
 	REQ			; reset Q
 L0:
-	LDI	10H		; load counter
+	LDI	0x10		; load counter
 	PHI	R1		;   into high R1
 L1:
 	; start of delay loop

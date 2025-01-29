@@ -1,0 +1,88 @@
+ AS V1.42 Beta [Bld 281] - Source File blink-q-led-at-visible-rate.asm - Page 1 - 28/01/25 23:33:14
+
+
+    1/   0 :                            ; -----------------------------------------------------------------------------
+    2/   0 :                            ; Originally written by:
+    3/   0 :                            ; Herb Johnson © 2020
+    4/   0 :                            ; Operating and Testing the 1802 Membership Card
+    5/   0 :                            ; https://www.retrotechnology.com/memship/mship_test.html
+    6/   0 :                            ; -----------------------------------------------------------------------------
+    7/   0 :                            ; This program blinks Q slowly enough so you can see it.
+    8/   0 :                            ; -----------------------------------------------------------------------------
+    9/   0 :                            
+   10/   0 :                            
+   11/   0 :                            ; -----------------------------------------------------------------------------
+   12/   0 :                            ; This version is written for
+   13/   0 :                            ; [The Macro Assembler AS](http://john.ccac.rwth-aachen.de:8000/as/), but
+   14/   0 :                            ; the code should be portable to other 1802 assemblers.
+   15/   0 :                            ; The following are the assembling and linking instructions:
+   16/   0 :                            ; ```
+   17/   0 :                            ; asl -cpu 1802 -L blink-q-led-at-visible-rate.asm
+   18/   0 :                            ; p2hex blink-q-led-at-visible-rate.p blink-q-led-at-visible-rate.hex
+   19/   0 :                            ; ```
+   20/   0 :                            ; -----------------------------------------------------------------------------
+   21/   0 :                            
+   22/   0 :                            
+   23/   0 :                            	RELAXED	ON
+   24/   0 :                            
+   25/   0 :                            
+   26/   0 : =1H                        R1	EQU	1
+   27/   0 :                            
+   28/   0 :                            	ORG	0
+   29/   0 :                            
+   30/   0 :                            start:
+   31/   0 : 7A                         	REQ			; reset Q
+   32/   1 :                            L0:
+   33/   1 : F8 10                      	LDI	0x10		; load counter
+   34/   3 : B1                         	PHI	R1		;   into high R1
+   35/   4 :                            L1:
+   36/   4 :                            	; start of delay loop
+   37/   4 : 21                         	DEC	R1		; decrement R1
+   38/   5 : 91                         	GHI	R1		; load the high part of R1 into D
+   39/   6 : 3A 04                      	BNZ	L1		; branch until the high part of R1 is zero
+   40/   8 :                            	; end of delay loop
+   41/   8 :                            
+   42/   8 : 31 00                      	BQ	start		; if Q is set, go to start to reset it
+   43/   A :                            				;   and do it all again
+   44/   A : 7B                         	SEQ			; otherwise, set Q
+   45/   B : 30 01                      	BR	L0		; and branch to set the counter for a
+   46/   D :                            				;   delay loop
+   47/   D :                            
+   48/   D :                            	END
+ AS V1.42 Beta [Bld 281] - Source File blink-q-led-at-visible-rate.asm - Page 2 - 28/01/25 23:33:14
+
+
+  Symbol Table (* = unused):
+  --------------------------
+
+*ARCHITECTURE :                                      "x86_64-unknown-linux" - |
+*CASESENSITIVE :                  0 - | *CONSTPI :     3.141592653589793239 - |
+*DATE :                  "28/01/25" - | *FALSE :                          0 - |
+*FLOATMAX :   1.18973149535725E4932 - | *HAS64 :                          1 - |
+ L0 :                             1 C |  L1 :                             4 C |
+*LISTON :                         1 - | *MACEXP :                         7 - |
+*MOMCPU :                      1802 - | *MOMCPUNAME :                "1802" - |
+*NESTMAX :                      100 - |  R1 :                             1 - |
+*RELAXED :                        1 - |  START :                          0 C |
+*TIME :                  "23:33:14" - | *TRUE :                           1 - |
+*VERSION :                     142F - |
+
+     20 symbols
+     16 unused symbols
+
+ AS V1.42 Beta [Bld 281] - Source File blink-q-led-at-visible-rate.asm - Page 3 - 28/01/25 23:33:14
+
+
+  Code Pages:
+  ----------
+
+STANDARD (0 changed characters)
+
+1 code page
+
+0.00 seconds assembly time
+
+     50 lines source file
+      1 pass
+      0 errors
+      0 warnings

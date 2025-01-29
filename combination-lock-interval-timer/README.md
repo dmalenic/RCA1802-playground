@@ -15,7 +15,7 @@ Each two-hex-digit data byte is entered using input switches and confirmed by pr
 As the data bytes for the *combination* are entered into memory, the 1802 performs a logical exclusive or with each byte
 in turn, using data stored at addresses `byte1+1`, `byte2+1` and `byte3+1` respectively. If the wrong number is entered
 at any point, the program jumps to the error subroutine beginning at location `error_sub`, which momentarily outputs an
-`EE'to the data display while executing a three-second timing delay, then outputs a `00` to the data display and jumps
+`EE`to the data display while executing a three-second timing delay, then outputs a `00` to the data display and jumps
 back to the start of the `combination_lock` routine.
 
 As written, you would have to enter `CA` (defined at the program location `byte1+1`), `FE` (defined at the program
