@@ -105,13 +105,13 @@ user_response:
 	DB	0xA3
 	; check if enter
 	GHI	RB
-	BZ	loop			; print message again
+	BZ	loop			; user pressed the <ENTER> key, print the message again
 	; check if escape
 	SMI	2
-	BNZ	user_response		; not escape, let user enter response again
+	BNZ	user_response		; not the <ESC> key, invalid input let user try again
 
 return_to_monitor:
-	; return the control to monitor
+	; user pressed the <ESC> key, return the control to monitor
 	SEP	R0
 
 msg:

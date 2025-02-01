@@ -1,4 +1,4 @@
- AS V1.42 Beta [Bld 281] - Source File ms20ansj-print-hello-world.asm - Page 1 - 28/01/25 23:33:14
+ AS V1.42 Beta [Bld 281] - Source File ms20ansj-print-hello-world.asm - Page 1 - 31/01/25 11:38:31
 
 
        1/   0 :                         ; -----------------------------------------------------------------------------
@@ -11,8 +11,8 @@
        8/   0 :                         ; the code should be portable to other 1802 assemblers.
        9/   0 :                         ; The following are the assembling and linking instructions:
       10/   0 :                         ; ```
-      11/   0 :                         ; asl -cpu 1802 -L print-hello-world.asm
-      12/   0 :                         ; p2hex print-hello-world.p print-hello-world.hex
+      11/   0 :                         ; asl -cpu 1802 -L ms20ansj-print-hello-world.asm
+      12/   0 :                         ; p2hex ms20ansj-print-hello-world.p ms20ansj-print-hello-world.hex
       13/   0 :                         ; ```
       14/   0 :                         ; -----------------------------------------------------------------------------
       15/   0 :                         
@@ -61,7 +61,7 @@
       49/   0 :                         	; R4=8ADB	points to SCRT call procedure
       50/   0 :                         	; R5=8AED	points to SCRT return procedure
       51/   0 :                         	; R6            stack for SCRT return addresses
- AS V1.42 Beta [Bld 281] - Source File ms20ansj-print-hello-world.asm - Page 2 - 28/01/25 23:33:14
+ AS V1.42 Beta [Bld 281] - Source File ms20ansj-print-hello-world.asm - Page 2 - 31/01/25 11:38:31
 
 
       52/   0 :                         	; R7		points to a string to be written by monitor routine on 8526
@@ -120,16 +120,16 @@
      105/  24 : A3                      	DB	0xA3
      106/  25 :                         	; check if enter
      107/  25 : 9B                      	GHI	RB
-     108/  26 : 32 1F                   	BZ	loop			; print message again
+     108/  26 : 32 1F                   	BZ	loop			; user pressed the <ENTER> key, print the message again
      109/  28 :                         	; check if escape
      110/  28 : FF 02                   	SMI	2
-     111/  2A : 3A 22                   	BNZ	user_response		; not escape, let user enter response again
- AS V1.42 Beta [Bld 281] - Source File ms20ansj-print-hello-world.asm - Page 3 - 28/01/25 23:33:14
+     111/  2A : 3A 22                   	BNZ	user_response		; not the <ESC> key, invalid input let user try again
+ AS V1.42 Beta [Bld 281] - Source File ms20ansj-print-hello-world.asm - Page 3 - 31/01/25 11:38:31
 
 
      112/  2C :                         
      113/  2C :                         return_to_monitor:
-     114/  2C :                         	; return the control to monitor
+     114/  2C :                         	; user pressed the <ESC> key, return the control to monitor
      115/  2C : D0                      	SEP	R0
      116/  2D :                         
      117/  2D :                         msg:
@@ -152,7 +152,7 @@
      123/8000 :                         
      124/8000 :                         monitor:
      125/8000 :                         	END
- AS V1.42 Beta [Bld 281] - Source File ms20ansj-print-hello-world.asm - Page 4 - 28/01/25 23:33:14
+ AS V1.42 Beta [Bld 281] - Source File ms20ansj-print-hello-world.asm - Page 4 - 31/01/25 11:38:31
 
 
   Symbol Table (* = unused):
@@ -160,7 +160,7 @@
 
 *ARCHITECTURE :                                      "x86_64-unknown-linux" - |
 *BITFUNCSINC :                    1 - | *CASESENSITIVE :                  0 - |
-*CONSTPI :     3.141592653589793239 - | *DATE :                  "28/01/25" - |
+*CONSTPI :     3.141592653589793239 - | *DATE :                  "31/01/25" - |
 *FALSE :                          0 - | *FLOATMAX :   1.18973149535725E4932 - |
 *HAS64 :                          1 - | *LISTON :                         1 - |
  LOOP :                          1F C | *MACEXP :                         7 - |
@@ -174,13 +174,13 @@
  RB :                            0B - | *RC :                            0C - |
 *RE :                            0E - | *RELAXED :                        1 - |
 *RESET :                         16 C | *RETURN_TO_MONITOR :             2C C |
-*TIME :                  "23:33:14" - | *TRUE :                           1 - |
+*TIME :                  "11:38:31" - | *TRUE :                           1 - |
  USER_RESPONSE :                 22 C | *VERSION :                     142F - |
 
      35 symbols
      22 unused symbols
 
- AS V1.42 Beta [Bld 281] - Source File ms20ansj-print-hello-world.asm - Page 5 - 28/01/25 23:33:14
+ AS V1.42 Beta [Bld 281] - Source File ms20ansj-print-hello-world.asm - Page 5 - 31/01/25 11:38:31
 
 
   Defined Functions:
@@ -194,7 +194,7 @@ HIWORD                                | LO
 HI                                    | CUTOUT                               
 INVMASK                               | MASK                                 
 
- AS V1.42 Beta [Bld 281] - Source File ms20ansj-print-hello-world.asm - Page 6 - 28/01/25 23:33:14
+ AS V1.42 Beta [Bld 281] - Source File ms20ansj-print-hello-world.asm - Page 6 - 31/01/25 11:38:31
 
 
   Code Pages:
@@ -204,7 +204,7 @@ STANDARD (0 changed characters)
 
 1 code page
 
-0.01 seconds assembly time
+0.00 seconds assembly time
 
     208 lines source file
       2 passes
