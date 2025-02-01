@@ -6,6 +6,7 @@ This recursive problem is well suited to investigate multiple ways RCA-1802 call
 
 The program presented here discovers all 92 solutions for [8 Queen Problem](https://en.wikipedia.org/wiki/Eight_queens_puzzle).
 
+![Screenshot](imgs/Screenshot.png)
 
 SPDX-FileCopyrightText: © 2025 Damir Maleničić,
 SPDX-License-Identifier: MIT

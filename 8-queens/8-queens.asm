@@ -52,6 +52,8 @@
 
 	RELAXED	ON
 
+	CPU	1802
+
 
 ; include the bit manipulation functions --------------------------------------
 ; This file defines a couple of bit-oriented functions that might be hardwired
