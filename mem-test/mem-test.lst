@@ -1,0 +1,223 @@
+ AS V1.42 Beta [Bld 281] - Source File mem-test.asm - Page 1 - 09/03/25 22:18:53
+
+
+       1/   0 :                         ; Here is a memory test program for the 1802 Membership card.
+       2/   0 :                         ; It is a bit march type test of the 32K RAM (62256) however
+       3/   0 :                         ; it doesn't check for cross-talk between the memory address lines.
+       4/   0 :                         ; I have wrote such a program but even on my Netronics ELF II
+       5/   0 :                         ; it would take just under 6 DAYS to complete.
+       6/   0 :                         ; This version does check for data line cross-talk only.
+       7/   0 :                         ; Running this software on the 1802 Membership Card Rev L.1
+       8/   0 :                         ; will take a minute or two to complete.
+       9/   0 :                         ; The LED's will display the current memory page being tested.
+      10/   0 :                         ; If there is an error detected the "Q" LED will come on and stay on.
+      11/   0 :                         ; If an error is detected the address that caused the error is stored
+      12/   0 :                         ; at memory location hex 0002 (hi order) and hex 0003 (lo order).
+      13/   0 :                         ; If there is no errors detected the data LED's will appear to count
+      14/   0 :                         ; from "00" to "7F", when it is done testing and no errors have been
+      15/   0 :                         ; detected the "Q" LED will flash (Blink) on and off and the data
+      16/   0 :                         ; LED's will display hex "7F" (01111111).
+      17/   0 :                         ;
+      18/   0 :                         ; last date Sept 30 2011. Charles J. Yakym
+      19/   0 :                         
+      20/   0 :                         
+      21/   0 :                         
+      22/   0 :                         ; enable C style numeric constants --------------------------------------------
+      23/   0 :                         
+      24/   0 :                         
+      25/   0 :                                 RELAXED ON
+      26/   0 :                         
+      27/   0 :                                 CPU     1802
+      28/   0 :                         
+      29/   0 :                         
+      30/   0 :                         ; include the bit manipulation functions --------------------------------------
+      31/   0 :                         ; This file defines a couple of bit-oriented functions that might be hardwired
+      32/   0 :                         ; when using other assemblers.
+      33/   0 :                         ; A code uses `hi()` and `lo()` operators that `asl` implements as user-defined
+      34/   0 :                         ; function. $ is the synonym for the current PC address.
+      35/   0 :                         ; The source for `bitfuncs.inc` is provided to help port those functions to the
+      36/   0 :                         ; assembler of your choice.
+      37/   0 :                         
+      38/   0 :                         
+      39/   0 :                                 INCLUDE "bitfuncs.inc"
+(1)    1/   0 : =>UNDEFINED             		ifndef   bitfuncsinc    ; avoid multiple inclusion
+(1)    2/   0 : =1H                     bitfuncsinc     equ      1
+(1)    3/   0 :                         
+(1)    4/   0 :                                         save
+(1)   77/   0 : ALL                                     restore                 ; allow listing again
+(1)   78/   0 :                         
+(1)   79/   0 : [1]                                     endif			; bitfuncsinc
+(1)   80/   0 :                         
+(1)   81/   0 :                         
+      40/   0 :                         
+      41/   0 :                         
+      42/   0 :                         ; register aliases ------------------------------------------------------------
+      43/   0 : =0H                     R0      EQU     0
+      44/   0 : =1H                     R1      EQU     1
+      45/   0 : =2H                     R2      EQU     2
+      46/   0 : =3H                     R3      EQU     3
+      47/   0 : =4H                     R4      EQU     4
+      48/   0 : =5H                     R5      EQU     5
+      49/   0 : =6H                     R6      EQU     6
+      50/   0 : =7H                     R7      EQU     7
+      51/   0 : =8H                     R8      EQU     8
+ AS V1.42 Beta [Bld 281] - Source File mem-test.asm - Page 2 - 09/03/25 22:18:53
+
+
+      52/   0 : =9H                     R9      EQU     9
+      53/   0 : =0AH                    RA      EQU     10
+      54/   0 : =0BH                    RB      EQU     11
+      55/   0 : =0CH                    RC      EQU     12
+      56/   0 : =0DH                    RD      EQU     13
+      57/   0 : =0EH                    RE      EQU     14
+      58/   0 : =0FH                    RF      EQU     15
+      59/   0 :                         
+      60/   0 : =20H                    BLNK_D	EQU	0x20		; blink delay
+      61/   0 :                         
+      62/   0 :                         
+      63/   0 :                                 ORG     0
+      64/   0 :                         
+      65/   0 :                         code:
+      66/   0 :                         
+      67/   0 : 30 05                   	BR   start 
+      68/   2 :                         mem_addr:
+      69/   2 : 00                      	DB   0x00		; high order address of memory being tested 
+      70/   3 : 00                      	DB   0x00		; lo order address of memory being tested
+      71/   4 :                         dis_pg_val:
+      72/   4 : 00                      	DB   0x00		; high order address to display
+      73/   5 :                         
+      74/   5 :                         start:
+      75/   5 : 90                      	GHI  R0 		; set hi order R2,R5, RC
+      76/   6 : B2                      	PHI  R2 
+      77/   7 : B5                      	PHI  R5 
+      78/   8 : BC                      	PHI  RC 
+      79/   9 : F8 02                   	LDI  lo(mem_addr) 	; R2 points at hi order storage location
+      80/   B : A2                      	PLO  R2 
+      81/   C : F8 04                   	LDI  lo(dis_pg_val) 	; R5 points to display memory address
+      82/   E : A5                      	PLO  R5 
+      83/   F : F8 4B                   	LDI  lo(free_mem) 	; Rc points to starting address to begin testing
+      84/  11 : AC                      	PLO  RC 
+      85/  12 : F8 01                   	LDI  0x01 		; RD.0 = starting test bit pattern
+      86/  14 : AD                      	PLO  RD 
+      87/  15 :                         
+      88/  15 :                         test_page:
+      89/  15 : 9C                      	GHI  RC 		; Display current page being tested
+      90/  16 : 55                      	STR  R5 
+      91/  17 : E5                      	SEX  R5 
+      92/  18 : 64                      	OUT  4 			; Display page number
+      93/  19 : 25                      	DEC  R5 
+      94/  1A : EC                      	SEX  RC 		; Set X=C
+      95/  1B :                         
+      96/  1B : 9C                      	GHI  RC 		; Save current hi order testing address at R2
+      97/  1C : 52                      	STR  R2 
+      98/  1D : 12                      	INC  R2 
+      99/  1E : 8C                      	GLO  RC 		; Save current lo order testing address as R2
+     100/  1F : 52                      	STR  R2 
+     101/  20 : 22                      	DEC  R2 
+     102/  21 : 8D                      	GLO  RD 
+     103/  22 : 73                      	STXD 			; Save bit pattern at RC
+     104/  23 : 1C                      	INC  RC 		; correct RC
+     105/  24 : F5                      	SD 
+     106/  25 : 32 2A                   	BZ   next_bit 		; Jump if bit was loaded correctly into memory pointed to by RC
+     107/  27 : 7B                      	SEQ 			; Set Q on
+     108/  28 : 30 28                   	BR   $	 		; Error detected, loop on self if error is detected
+     109/  2A :                         
+     110/  2A :                         next_bit:
+     111/  2A : 8D                      	GLO  RD  
+ AS V1.42 Beta [Bld 281] - Source File mem-test.asm - Page 3 - 09/03/25 22:18:53
+
+
+     112/  2B : FE                      	SHL 			; Change bit pattern, Shift bit left
+     113/  2C : AD                      	PLO  RD 		; Save bit pattern in RD.0
+     114/  2D : 3A 15                   	BNZ  test_page 		; Jump if not done with bit pattern 01 thru 80
+     115/  2F : 5C                      	STR  RC 		; zero out tested memory location
+     116/  30 :                         
+     117/  30 : F8 01                   	LDI  0x01 		; Reset bit pattern to hex "01"
+     118/  32 : AD                      	PLO  RD 
+     119/  33 : 1C                      	INC  RC 		; increment memory location counter RC
+     120/  34 :                         
+     121/  34 : 9C                      	GHI  RC 
+     122/  35 : FD 80                   	SDI  0x80 		; Check to see if RC = hex "8000"
+     123/  37 : 3A 15                   	BNZ  test_page 		; If not then check next memory location pointed to by RC
+     124/  39 :                         
+     125/  39 :                         test_ok:
+     126/  39 : 7B                      	SEQ			; Flash "Q" LED when done with no errors detected 
+     127/  3A : F8 20                   	LDI  BLNK_D 		; RA is a countdown timer
+     128/  3C : BA                      	PHI  RA 
+     129/  3D : 2A                      	DEC  RA 
+     130/  3E : 9A                      	GHI  RA 
+     131/  3F : 3A 3D                   	BNZ  $-2	 	; Counter = zero?
+     132/  41 : 7A                      	REQ 
+     133/  42 : F8 20                   	LDI  BLNK_D 		; RA is a countdown timer
+     134/  44 : BA                      	PHI  RA 
+     135/  45 : 2A                      	DEC  RA 
+     136/  46 : 9A                      	GHI  RA 
+     137/  47 : 3A 45                   	BNZ  $-2 		; Counter = zero?
+     138/  49 : 30 39                   	BR   test_ok		;keep the "Q" LED flashing
+     139/  4B :                         
+     140/  4B :                         free_mem:
+     141/  4B :                         	; the first memory location to be tested
+     142/  4B :                         
+     143/  4B :                         	END
+ AS V1.42 Beta [Bld 281] - Source File mem-test.asm - Page 4 - 09/03/25 22:18:53
+
+
+  Symbol Table (* = unused):
+  --------------------------
+
+*ARCHITECTURE :                                      "x86_64-unknown-linux" - |
+*BITFUNCSINC :                    1 - |  BLNK_D :                        20 - |
+*CASESENSITIVE :                  0 - | *CODE :                           0 C |
+*CONSTPI :     3.141592653589793239 - | *DATE :                  "09/03/25" - |
+ DIS_PG_VAL :                     4 C | *FALSE :                          0 - |
+*FLOATMAX :   1.18973149535725E4932 - |  FREE_MEM :                      4B C |
+*HAS64 :                          1 - | *LISTON :                         1 - |
+*MACEXP :                         7 - |  MEM_ADDR :                       2 C |
+*MOMCPU :                      1802 - | *MOMCPUNAME :                "1802" - |
+*NESTMAX :                      100 - |  NEXT_BIT :                      2A C |
+ R0 :                             0 - | *R1 :                             1 - |
+ R2 :                             2 - | *R3 :                             3 - |
+*R4 :                             4 - |  R5 :                             5 - |
+*R6 :                             6 - | *R7 :                             7 - |
+*R8 :                             8 - | *R9 :                             9 - |
+ RA :                            0A - | *RB :                            0B - |
+ RC :                            0C - |  RD :                            0D - |
+*RE :                            0E - | *RELAXED :                        1 - |
+*RF :                            0F - |  START :                          5 C |
+ TEST_OK :                       39 C |  TEST_PAGE :                     15 C |
+*TIME :                  "22:18:53" - | *TRUE :                           1 - |
+*VERSION :                     142F - |
+
+     42 symbols
+     28 unused symbols
+
+ AS V1.42 Beta [Bld 281] - Source File mem-test.asm - Page 5 - 09/03/25 22:18:53
+
+
+  Defined Functions:
+  ------------------
+
+ROTRN                                 | ROTLN                                
+SHRN                                  | SHLN                                 
+GETBIT                                | EVEN                                 
+ODD                                   | LOWORD                               
+HIWORD                                | LO                                   
+HI                                    | CUTOUT                               
+INVMASK                               | MASK                                 
+
+ AS V1.42 Beta [Bld 281] - Source File mem-test.asm - Page 6 - 09/03/25 22:18:53
+
+
+  Code Pages:
+  ----------
+
+STANDARD (0 changed characters)
+
+1 code page
+
+0.02 seconds assembly time
+
+    226 lines source file
+      2 passes
+      0 errors
+      0 warnings
