@@ -20,8 +20,10 @@ The following projects are the result of my early investigation:
   [Chapter 5 -- Arithmetic and Logic](http://www.cosmacelf.com/publications/books/short-course-in-programming.html#chapter5),
 - the [combination-lock-interval-timer](combination-lock-interval-timer/README.md) is based on examples from an
   [old magazine](https://www.atarimagazines.com/computeii/issue3/page50.php),
+- the [mem-test](mem-test/README.md) is an extension of Chack Yakym's [mem-test](https://www.retrotechnology.com/memship/yakym_1802.zip).
 - my [port](killthebit/README.md) of the legendary Altair 8800 game [Killbits](https://altairclone.com/downloads/killbits.pdf) to [The 1802 Membership Card](https://www.sunrise-ev.com/1802.htm).
 - [8 queens](8-queens/README.md) problem is an investigation on how RCA 1802 calls a subroutine.
+- [fibonacci](fibonacci/README.md) makes RCA 1802 go 32 bit.
 
 I use Linux and [The Macro Assembler AS](http://john.ccac.rwth-aachen.de:8000/as/) written by 
 [Alfred Arnold](mailto:alfred@ccac.rwth-aachen.de). The examples might need some tweaking to
