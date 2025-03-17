@@ -1,0 +1,1074 @@
+ AS V1.42 Beta [Bld 281] - Source File sieve.asm - Page 1 - 17/03/25 16:43:13
+
+
+       1/   0 :                         ; -----------------------------------------------------------------------------
+       2/   0 :                         ; SPDX-FileCopyrightText: © 2024 Damir Maleničić,
+       3/   0 :                         ; SPDX-License-Identifier: MIT
+       4/   0 :                         ; -----------------------------------------------------------------------------
+       5/   0 :                         ; This program generates all prime numbers less than 65536 using a sieve of
+       6/   0 :                         ; Eratosthenes algorithm.
+       7/   0 :                         ; -----------------------------------------------------------------------------
+       8/   0 :                         ; Register allocation is partially imposed by the integration with Chuck's monitor:
+       9/   0 :                         ; R0 - reset program counter and SP, PC, and SP for user programs invoked with the
+      10/   0 :                         ;      `R` command, a memory pointer during the `DMA` transfer
+      11/   0 :                         ; R1 - the interrupt program counter
+      12/   0 :                         ; R2 - a stack pointer for the main function and interrupt routines
+      13/   0 :                         ; R3 - program counter for the main function
+      14/   0 :                         ; R4 - program counter for SCRT subroutine calls
+      15/   0 :                         ; R5 - program counter for SCRT subroutine returns
+      16/   0 :                         ; R6 - SCRT return address stack pointer
+      17/   0 :                         ; R7 - a pointer to a string to be written when invoking `mon_put_str` on location 8526
+      18/   0 :                         ; R8, R9.LO are used to update the context of `sieve` (step 3.2)
+      19/   0 :                         ;     R8 points to the byte, and R9.LO is the bit mask to test/update
+      20/   0 :                         ; RA holds the pointer to the buffer that holds the current number being
+      21/   0 :                         ;     marked as composite, or
+      22/   0 :                         ; RC holds the current number being tested for primality
+      23/   0 :                         ; RD holds the pointer to the `step` when marking multiples of a prime number as composites
+      24/   0 :                         ; RB.HI - holds the input character classification
+      25/   0 :                         ; RB.LO - holds the input character or the output character
+      26/   0 :                         ; RE.HI - by the monitor program convention, it holds 01
+      27/   0 :                         ; RE.LO - holds the UART baud rate indicator
+      28/   0 :                         ; RF.HI - used by SCRT call and return subroutines to preserve the value of D
+      29/   0 :                         ;         register between caller and callee
+      30/   0 :                         ; -----------------------------------------------------------------------------
+      31/   0 :                         ; It is assembled using
+      32/   0 :                         ; [The Macro Assembler AS](http://john.ccac.rwth-aachen.de:8000/as/), but
+      33/   0 :                         ; the code should be portable to other 1802 assemblers.
+      34/   0 :                         ; The following instructions can be used to assemble and link the program:
+      35/   0 :                         ; ```
+      36/   0 :                         ; asl -cpu 1802 -L sieve.asm
+      37/   0 :                         ; p2hex 8-queens.p sieve.hex
+      38/   0 :                         ; ```
+      39/   0 :                         ; -----------------------------------------------------------------------------
+      40/   0 :                         
+      41/   0 :                         
+      42/   0 :                         ; enable C style numeric constants --------------------------------------------
+      43/   0 :                         
+      44/   0 :                         
+      45/   0 :                                 RELAXED ON
+      46/   0 :                         
+      47/   0 :                                 CPU     1802
+      48/   0 :                         
+      49/   0 :                         
+      50/   0 :                         ; include the bit manipulation functions --------------------------------------
+      51/   0 :                         ; This file defines some bit-oriented functions that might be hardwired
+      52/   0 :                         ; when using other assemblers.
+      53/   0 :                         ; A code uses `hi()` and `lo()` operators that `asl` implements as user-defined
+      54/   0 :                         ; function. `$` is the synonym for the current PC address.
+      55/   0 :                         
+      56/   0 :                         
+      57/   0 :                                 INCLUDE "bitfuncs.inc"
+(1)    1/   0 : =>UNDEFINED             		ifndef   bitfuncsinc    ; avoid multiple inclusion
+(1)    2/   0 : =1H                     bitfuncsinc     equ      1
+(1)    3/   0 :                         
+ AS V1.42 Beta [Bld 281] - Source File sieve.asm(bitfuncs.inc) - Page 2 - 17/03/25 16:43:13
+
+
+(1)    4/   0 :                                         save
+(1)   77/   0 : ALL                                     restore                 ; allow listing again
+(1)   78/   0 :                         
+(1)   79/   0 : [1]                                     endif			; bitfuncsinc
+(1)   80/   0 :                         
+(1)   81/   0 :                         
+      58/   0 :                         
+      59/   0 :                         
+      60/   0 :                         ; register aliases ------------------------------------------------------------
+      61/   0 : =0H                     R0      EQU     0
+      62/   0 : =1H                     R1      EQU     1
+      63/   0 : =2H                     R2      EQU     2
+      64/   0 : =3H                     R3      EQU     3
+      65/   0 : =4H                     R4      EQU     4
+      66/   0 : =5H                     R5      EQU     5
+      67/   0 : =6H                     R6      EQU     6
+      68/   0 : =7H                     R7      EQU     7
+      69/   0 : =8H                     R8      EQU     8
+      70/   0 : =9H                     R9      EQU     9
+      71/   0 : =0AH                    RA      EQU     10
+      72/   0 : =0BH                    RB      EQU     11
+      73/   0 : =0CH                    RC      EQU     12
+      74/   0 : =0DH                    RD      EQU     13
+      75/   0 : =0EH                    RE      EQU     14
+      76/   0 : =0FH                    RF      EQU     15
+      77/   0 :                         
+      78/   0 :                         
+      79/   0 :                         ; -----------------------------------------------------------------------------
+      80/   0 :                         ; PROGRAM
+      81/   0 :                         ; -----------------------------------------------------------------------------
+      82/   0 :                                 ORG     0
+      83/   0 :                         code:
+      84/   0 :                         
+      85/   0 :                         	; ---------------------------------------------------------------------
+      86/   0 :                         	; Initialize the program
+      87/   0 :                         	; ---------------------------------------------------------------------
+      88/   0 :                         	; When started after the reset, or by executing the monitor R0000 command:
+      89/   0 :                         	; R0 is set to be both the program counter and the stack pointer
+      90/   0 :                         	; R1 will become a program counter in the case of an interrupt
+      91/   0 :                         	; R2 will become a stack pointer in the case of an interrupt
+      92/   0 :                         	; The following section configures the registers:
+      93/   0 :                         	; R2 points to the area that will become a stack pointer when control is passed to the main function
+      94/   0 :                         	; R3 will become a program counter and point to the main function
+      95/   0 :                         	; R4 will point to SCRT call routine
+      96/   0 :                         	; R5 will point to SCRT return routine
+      97/   0 :                         	; R6 will point to SCRT stack
+      98/   0 :                         	; ---------------------------------------------------------------------
+      99/   0 :                         
+     100/   0 :                         	; Initialize R4 to 0x8ADB and R5 to 0x8AED to enable SCRT.
+     101/   0 : F8 8A                   	LDI	hi(mon_scrt_call)
+     102/   2 : B4                      	PHI	R4
+     103/   3 : B5                      	PHI	R5
+     104/   4 : F8 DB                   	LDI	lo(mon_scrt_call)
+     105/   6 : A4                      	PLO	R4
+     106/   7 : F8 ED                   	LDI	lo(mon_scrt_return)
+     107/   9 : A5                      	PLO	R5
+     108/   A :                         
+     109/   A :                         	; Initialize R6 to SCRT_stack.
+     110/   A : F8 03                   	LDI	hi(scrt_stack)
+     111/   C : B6                      	PHI	R6
+ AS V1.42 Beta [Bld 281] - Source File sieve.asm - Page 3 - 17/03/25 16:43:13
+
+
+     112/   D : F8 7F                   	LDI	lo(scrt_stack)
+     113/   F : A6                      	PLO	R6
+     114/  10 :                         
+     115/  10 :                         	; Configure R3 to point to the main function.
+     116/  10 : F8 21                   	LDI	lo(main)
+     117/  12 : A3                      	PLO	R3
+     118/  13 : 90                      	GHI	R0
+     119/  14 : B3                      	PHI	R3
+     120/  15 :                         
+     121/  15 :                         	; Configure R2 to point to the stack.
+     122/  15 : F8 03                   	LDI	hi(stack)
+     123/  17 : B2                      	PHI	R2
+     124/  18 : F8 FF                   	LDI	lo(stack)
+     125/  1A : A2                      	PLO	R2
+     126/  1B :                         
+     127/  1B :                         	; Pass the control to the main function.
+     128/  1B : E2                      	SEX	R2			; Make R2 the default index register, i.e., the stack pointer.
+     129/  1C : D3                      	SEP	R3			; Call the main function.
+     130/  1D :                         
+     131/  1D :                         	; ---------------------------------------------------------------------
+     132/  1D :                         	; The program exit point.
+     133/  1D :                         	; ---------------------------------------------------------------------
+     134/  1D :                         	; R0 points to this location, so when SEP 0 is executed at the end of the main,
+     135/  1D :                         	; the program execution will resume from this point.
+     136/  1D : E0                      	SEX	R0			; R0 is now the default index register, similar to what it was after the reset.
+     137/  1E : C0 80 00                	LBR	monitor			; Jump to the monitor.
+     138/  21 :                         
+     139/  21 :                         	; ---------------------------------------------------------------------
+     140/  21 :                         	; The main function.
+     141/  21 :                         	; ---------------------------------------------------------------------
+     142/  21 :                         main:
+     143/  21 : F8 02                   	LDI	hi(initial_msg)
+     144/  23 : B7                      	PHI	R7
+     145/  24 : F8 18                   	LDI	lo(initial_msg)
+     146/  26 : A7                      	PLO	R7
+     147/  27 : D4                      	SEP	R4
+     148/  28 : 85                      	DB	hi(mon_put_str)
+     149/  29 : 26                      	DB	lo(mon_put_str)
+     150/  2A :                         
+     151/  2A :                         	; ---------------------------------------------------------------------
+     152/  2A :                         	; Initialize the `sieve` array for the initial case that 2 is the prime.
+     153/  2A :                         	; R8 is the index within the sieve.
+     154/  2A :                         	; RC is the counter.
+     155/  2A :                         	; ---------------------------------------------------------------------
+     156/  2A : F8 3F                   	LDI	hi(sieve_end-1)		; R8 points to the last element of the `sieve` array
+     157/  2C : B8                      	PHI	R8
+     158/  2D : F8 FF                   	LDI	lo(sieve_end-1)
+     159/  2F : A8                      	PLO	R8
+     160/  30 : F8 00                   	LDI	0
+     161/  32 : AC                      	PLO	RC
+     162/  33 :                         
+     163/  33 : E8                      	SEX	R8			; Use R8 as the index register; R8 points to the `sieve`.
+     164/  34 :                         
+     165/  34 :                         init_loop:
+     166/  34 : F8 55                   	LDI	0b01010101		; Prepopulate the sieve to a state corresponding to 2 being a prime.
+     167/  36 :                         	REPT	32			; Unwind the loop so only the `RC.LO` register is used as a counter (32 * 256 == 8k)
+     168/  36 :                         	STXD
+     169/  36 :                         	ENDM
+     168/  36 : 73                      	STXD
+     168/  37 : 73                      	STXD
+ AS V1.42 Beta [Bld 281] - Source File sieve.asm - Page 4 - 17/03/25 16:43:13
+
+
+     168/  38 : 73                      	STXD
+     168/  39 : 73                      	STXD
+     168/  3A : 73                      	STXD
+     168/  3B : 73                      	STXD
+     168/  3C : 73                      	STXD
+     168/  3D : 73                      	STXD
+     168/  3E : 73                      	STXD
+     168/  3F : 73                      	STXD
+     168/  40 : 73                      	STXD
+     168/  41 : 73                      	STXD
+     168/  42 : 73                      	STXD
+     168/  43 : 73                      	STXD
+     168/  44 : 73                      	STXD
+     168/  45 : 73                      	STXD
+     168/  46 : 73                      	STXD
+     168/  47 : 73                      	STXD
+     168/  48 : 73                      	STXD
+     168/  49 : 73                      	STXD
+     168/  4A : 73                      	STXD
+     168/  4B : 73                      	STXD
+     168/  4C : 73                      	STXD
+     168/  4D : 73                      	STXD
+     168/  4E : 73                      	STXD
+     168/  4F : 73                      	STXD
+     168/  50 : 73                      	STXD
+     168/  51 : 73                      	STXD
+     168/  52 : 73                      	STXD
+     168/  53 : 73                      	STXD
+     168/  54 : 73                      	STXD
+     168/  55 : 73                      	STXD
+     170/  56 : 2C                      	DEC	RC
+     171/  57 : 8C                      	GLO	RC
+     172/  58 : 3A 34                   	BNZ	init_loop
+     173/  5A :                         
+     174/  5A :                         	; This is the special case for the very first byte; 1 is neither prime nor composite,
+     175/  5A :                         	; and 2 is the only even prime.
+     176/  5A :                         	; Note: R8 points to a byte just below the start of the sieve.
+     177/  5A : 18                      	INC	R8			; Point R8 to the 1st element.
+     178/  5B : F8 95                   	LDI	0b10010101		; The 1st byte must account for 2 being a prime and 1 not.
+     179/  5D : 58                      	STR	R8
+     180/  5E :                         
+     181/  5E : E2                      	SEX	R2			; Restore default index register.
+     182/  5F :                         
+     183/  5F :                         	; ---------------------------------------------------------------------
+     184/  5F :                         	; Detect primes other primes starting with 3:
+     185/  5F :                         	; 1. loop over all odd numbers less than 32768
+     186/  5F :                         	;   2. if the current testing number is not marked yet, it is a prime
+     187/  5F :                         	;      3.1 set the marking step to be twice the current prime
+     188/  5F :                         	;      3.2 starting from the current prime, using the marking step as the
+     189/  5F :                         	;          increment, mark every encountered number as a composite.
+     190/  5F :                         	; RC holds the current number being tested (step 1)
+     191/  5F :                         	; RA holds the pointer to`tmp_mark`, which holds the current number being
+     192/  5F :                         	;     marked as composite (step 3.2)
+     193/  5F :                         	; RD holds the pointer to the `step` in which RA is incremented (step 3.2)
+     194/  5F :                         	; R8, R9.LO are used to update the context of `sieve` (step 3.2)
+     195/  5F :                         	;     R8 points to the byte, and R9.LO is the bit mask to test/update
+     196/  5F :                         	; ---------------------------------------------------------------------
+     197/  5F :                         
+     198/  5F :                         	; initialize the RC, RA and RD
+     199/  5F : F8 00                   	LDI	0			; RC is 0003
+ AS V1.42 Beta [Bld 281] - Source File sieve.asm - Page 5 - 17/03/25 16:43:13
+
+
+     200/  61 : BC                      	PHI	RC
+     201/  62 : F8 03                   	LDI	3
+     202/  64 : AC                      	PLO	RC
+     203/  65 : F8 02                   	LDI	hi(vars)		; RA points to `tmp_mark`
+     204/  67 : BA                      	PHI	RA
+     205/  68 : BD                      	PHI	RD
+     206/  69 : F8 09                   	LDI	lo(tmp_mark)
+     207/  6B : AA                      	PLO	RA
+     208/  6C : F8 0B                   	LDI	lo(step)		; RD points to `step`
+     209/  6E : AD                      	PLO	RD
+     210/  6F :                         
+     211/  6F :                         	; ---------------------------------------------------------------------
+     212/  6F :                         	; The outer loop loops over all odd numbers starting with 3 less than 32768.
+     213/  6F :                         	; If any encountered number has not already been marked, it is a prime.
+     214/  6F :                         	; ---------------------------------------------------------------------
+     215/  6F :                         
+     216/  6F :                         outer_marking_loop:
+     217/  6F :                         	; Initialize the current testing number in `tmp_mark` and `step` to the value in RC.
+     218/  6F : 9C                      	GHI	RC			; get RC.HI
+     219/  70 : 5A                      	STR	RA			; store it to the 1st byte of `tmp_mark`
+     220/  71 : 5D                      	STR	RD			; and to the 1st byte of `step`
+     221/  72 : 1A                      	INC	RA			; move RA to the 2nd byte of `tmp_mark`
+     222/  73 : 1D                      	INC	RD			; move RD to the 2nd byte of `step`
+     223/  74 : 8C                      	GLO	RC			; get the RC.LO
+     224/  75 : 5A                      	STR	RA			; and store it to the 2nd byte of `tmp_mark`
+     225/  76 :                         	; double it for the step value
+     226/  76 : FE                      	SHL				; double the value in D, MSB carry overflows to DF
+     227/  77 : 5D                      	STR	RD			; store it as the 2nd byte of `step`
+     228/  78 : 2D                      	DEC	RD			; then point RD to the 1st byte of `step`
+     229/  79 : 0D                      	LDN	RD			; and load the 1st byte of `step`.
+     230/  7A : 7E                      	SHLC				; Double it and populate the LSB from DF.
+     231/  7B : 5D                      	STR	RD			; Store the result to the 1st byte of `step`
+     232/  7C :                         	; At this moment, RD points to the 1st byte of `step`.
+     233/  7C : 2A                      	DEC	RA			; RA points to the 1st byte of `tmp_mark`.
+     234/  7D :                         
+     235/  7D :                         	; ---------------------------------------------------------------------
+     236/  7D :                         	; Check if the number has already been marked. If so, skip it and continue
+     237/  7D :                         	; with the next candidate.
+     238/  7D :                         	; ---------------------------------------------------------------------
+     239/  7D :                         
+     240/  7D :                         	; Put the byte index of the number from `tmp_mark` into R8.
+     241/  7D :                         	; Note that the number 1 in `tmp_mark` is represented by the bit 0 of the byte 0 of `sieve`.
+     242/  7D : 4A                      	LDA	RA			; Read the value pointed by RA
+     243/  7E : B8                      	PHI	R8			; and copy it to R8.
+     244/  7F : 0A                      	LDN	RA
+     245/  80 : A8                      	PLO	R8
+     246/  81 : 28                      	DEC	R8			; Fix the offset error between the prime representation in RC and the one in `sieve`.
+     247/  82 :                         	; Let R9 point to `mark_mask`. Note the optimization if it is placed on the page boundary.
+     248/  82 : F8 02                   	LDI	hi(mark_mask)
+     249/  84 : B9                      	PHI	R9
+     250/  85 : F8 00                   	LDI	0
+     251/  87 : A9                      	PLO	R9
+     252/  88 : 2A                      	DEC	RA			; Keep RA pointing to the first byte of `tmp_mark`.
+     253/  89 :                         
+     254/  89 :                         	; Shift R8 3 times to the right. The shifted-out bits are shifted into R9.LO.
+     255/  89 :                         	REPT	3
+     256/  89 :                         	GHI	R8
+     257/  89 :                         	SHR
+     258/  89 :                         	PHI	R8
+     259/  89 :                         	GLO	R8
+ AS V1.42 Beta [Bld 281] - Source File sieve.asm - Page 6 - 17/03/25 16:43:13
+
+
+     260/  89 :                         	SHRC
+     261/  89 :                         	PLO	R8
+     262/  89 :                         	GLO	R9
+     263/  89 :                         	SHRC
+     264/  89 :                         	PLO	R9
+     265/  89 :                         	ENDM
+     256/  89 : 98                      	GHI	R8
+     257/  8A : F6                      	SHR
+     258/  8B : B8                      	PHI	R8
+     259/  8C : 88                      	GLO	R8
+     260/  8D : 76                      	SHRC
+     261/  8E : A8                      	PLO	R8
+     262/  8F : 89                      	GLO	R9
+     263/  90 : 76                      	SHRC
+     264/  91 : A9                      	PLO	R9
+     256/  92 : 98                      	GHI	R8
+     257/  93 : F6                      	SHR
+     258/  94 : B8                      	PHI	R8
+     259/  95 : 88                      	GLO	R8
+     260/  96 : 76                      	SHRC
+     261/  97 : A8                      	PLO	R8
+     262/  98 : 89                      	GLO	R9
+     263/  99 : 76                      	SHRC
+     264/  9A : A9                      	PLO	R9
+     256/  9B : 98                      	GHI	R8
+     257/  9C : F6                      	SHR
+     258/  9D : B8                      	PHI	R8
+     259/  9E : 88                      	GLO	R8
+     260/  9F : 76                      	SHRC
+     261/  A0 : A8                      	PLO	R8
+     262/  A1 : 89                      	GLO	R9
+     263/  A2 : 76                      	SHRC
+     264/  A3 : A9                      	PLO	R9
+     266/  A4 :                         	; Right align R9.LO.
+     267/  A4 :                         	REPT	5
+     268/  A4 :                         	SHR
+     269/  A4 :                         	ENDM
+     268/  A4 : F6                      	SHR
+     268/  A5 : F6                      	SHR
+     268/  A6 : F6                      	SHR
+     268/  A7 : F6                      	SHR
+     268/  A8 : F6                      	SHR
+     270/  A9 : A9                      	PLO	R9
+     271/  AA :                         
+     272/  AA :                         	; Make R8 point to the correct byte within `sieve`.
+     273/  AA : 98                      	GHI	R8
+     274/  AB : FC 20                   	ADI	hi(sieve)
+     275/  AD : B8                      	PHI	R8
+     276/  AE :                         	; There is no need to add the lower part of the `mark_mask` address to R9.LO if it is on the page boundary.
+     277/  AE :                         
+     278/  AE :                         	; Test the bit based on the mask pointed by R9. If it is already marked, look for another candidate.
+     279/  AE : 08                      	LDN	R8
+     280/  AF : E9                      	SEX	R9
+     281/  B0 : F2                      	AND
+     282/  B1 : E2                      	SEX	R2
+     283/  B2 : 3A FA                   	BNZ	next_marking_number
+     284/  B4 :                         
+     285/  B4 :                         	; ---------------------------------------------------------------------
+     286/  B4 :                         	; At this point, we have a prime number.
+     287/  B4 :                         	; The inner loop marks all its multiples as composite numbers.
+ AS V1.42 Beta [Bld 281] - Source File sieve.asm - Page 7 - 17/03/25 16:43:13
+
+
+     288/  B4 :                         	; ---------------------------------------------------------------------
+     289/  B4 :                         
+     290/  B4 :                         inner_marking_loop:
+     291/  B4 :                         
+     292/  B4 :                         	; ---------------------------------------------------------------------
+     293/  B4 :                         	; Calculate numbers to mark: M[RA] = M[RA] + M[RD]
+     294/  B4 :                         	; ---------------------------------------------------------------------
+     295/  B4 :                         
+     296/  B4 :                         	; RA points th the 1st byte of `tmp_mark`, and RD points to the 1st byte of `step`.
+     297/  B4 : ED                      	SEX	RD			; make RD index
+     298/  B5 : 1D                      	INC	RD			; let RD point to the 2nd byte of `step`
+     299/  B6 : 1A                      	INC	RA			; let RA point to the 2nd byte of `tnp_mark`
+     300/  B7 : 0A                      	LDN	RA			; load the 2nd byte of `tmp_mark`
+     301/  B8 : F4                      	ADD				; add the 2nd byte of `step`
+     302/  B9 : 5A                      	STR	RA			; store the result to the 2nd byte of `tmp_mark`
+     303/  BA : 2D                      	DEC	RD			; point to the 1st byte of `step`
+     304/  BB : 2A                      	DEC	RA			; point to the 1st byte of `tmp_mark`
+     305/  BC : 0A                      	LDN	RA			; load the 1st byte of `tmp_mark`
+     306/  BD : 74                      	ADC				; add the 1st byte of `step` with carry
+     307/  BE : 5A                      	STR	RA			; store the result to the 1st byte of `tmp_mark`
+     308/  BF : E2                      	SEX	R2			; restore the default index register
+     309/  C0 :                         	; If M[RA] >= 65536, i.e., the carry has occurred, then the inner loop has been completed.
+     310/  C0 : 33 FA                   	BDF	next_marking_number	; The carry is detected, and we are done with the inner loop.
+     311/  C2 :                         	; RA points to the 1st byte of `tmp_mark`.
+     312/  C2 :                         
+     313/  C2 :                         	; ---------------------------------------------------------------------
+     314/  C2 :                         	; Mark the composite number.
+     315/  C2 :                         	; ---------------------------------------------------------------------
+     316/  C2 :                         
+     317/  C2 :                         	; Put the byte index of the number from `tmp_mark` into R8.
+     318/  C2 :                         	; Note that the number 1 in `tmp_mark` is represented by the bit 0 of the byte 0 of `sieve`.
+     319/  C2 : 4A                      	LDA	RA			; Read the value pointed by RA
+     320/  C3 : B8                      	PHI	R8			; and copy it to R8.
+     321/  C4 : 0A                      	LDN	RA
+     322/  C5 : A8                      	PLO	R8
+     323/  C6 : 28                      	DEC	R8			; Fix the offset error between the prime representation in RC and the one in `sieve`.
+     324/  C7 :                         	; Let R9 point to `mark_mask`. Note the optimization if it is placed on the page boundary.
+     325/  C7 : F8 02                   	LDI	hi(mark_mask)
+     326/  C9 : B9                      	PHI	R9
+     327/  CA : F8 00                   	LDI	0
+     328/  CC : A9                      	PLO	R9
+     329/  CD : 2A                      	DEC	RA			; Keep RA pointing to the first byte of `tmp_mark`.
+     330/  CE :                         
+     331/  CE :                         	; Shift R8 3 times to the right. The shifted-out bits are shifted into R9.LO.
+     332/  CE :                         	REPT	3
+     333/  CE :                         	GHI	R8
+     334/  CE :                         	SHR
+     335/  CE :                         	PHI	R8
+     336/  CE :                         	GLO	R8
+     337/  CE :                         	SHRC
+     338/  CE :                         	PLO	R8
+     339/  CE :                         	GLO	R9
+     340/  CE :                         	SHRC
+     341/  CE :                         	PLO	R9
+     342/  CE :                         	ENDM
+     333/  CE : 98                      	GHI	R8
+     334/  CF : F6                      	SHR
+     335/  D0 : B8                      	PHI	R8
+     336/  D1 : 88                      	GLO	R8
+     337/  D2 : 76                      	SHRC
+ AS V1.42 Beta [Bld 281] - Source File sieve.asm - Page 8 - 17/03/25 16:43:13
+
+
+     338/  D3 : A8                      	PLO	R8
+     339/  D4 : 89                      	GLO	R9
+     340/  D5 : 76                      	SHRC
+     341/  D6 : A9                      	PLO	R9
+     333/  D7 : 98                      	GHI	R8
+     334/  D8 : F6                      	SHR
+     335/  D9 : B8                      	PHI	R8
+     336/  DA : 88                      	GLO	R8
+     337/  DB : 76                      	SHRC
+     338/  DC : A8                      	PLO	R8
+     339/  DD : 89                      	GLO	R9
+     340/  DE : 76                      	SHRC
+     341/  DF : A9                      	PLO	R9
+     333/  E0 : 98                      	GHI	R8
+     334/  E1 : F6                      	SHR
+     335/  E2 : B8                      	PHI	R8
+     336/  E3 : 88                      	GLO	R8
+     337/  E4 : 76                      	SHRC
+     338/  E5 : A8                      	PLO	R8
+     339/  E6 : 89                      	GLO	R9
+     340/  E7 : 76                      	SHRC
+     341/  E8 : A9                      	PLO	R9
+     343/  E9 :                         	; Right align R9.LO.
+     344/  E9 :                         	REPT	5
+     345/  E9 :                         	SHR
+     346/  E9 :                         	ENDM
+     345/  E9 : F6                      	SHR
+     345/  EA : F6                      	SHR
+     345/  EB : F6                      	SHR
+     345/  EC : F6                      	SHR
+     345/  ED : F6                      	SHR
+     347/  EE : A9                      	PLO	R9
+     348/  EF :                         
+     349/  EF :                         	; Make R8 point to the correct byte within `sieve`.
+     350/  EF : 98                      	GHI	R8
+     351/  F0 : FC 20                   	ADI	hi(sieve)
+     352/  F2 : B8                      	PHI	R8
+     353/  F3 :                         	; There is no need to add the lower part of the `mark_mask` address to R9.LO if it is on the page boundary.
+     354/  F3 :                         
+     355/  F3 :                         	; Set the bit to indicate that it corresponds to the composite number.
+     356/  F3 : 08                      	LDN	R8
+     357/  F4 : E9                      	SEX	R9
+     358/  F5 : F1                      	OR
+     359/  F6 : E2                      	SEX	R2
+     360/  F7 : 58                      	STR	R8
+     361/  F8 :                         
+     362/  F8 : 30 B4                   	BR	inner_marking_loop
+     363/  FA :                         
+     364/  FA :                         next_marking_number:
+     365/  FA :                         
+     366/  FA :                         	; Increment RC twice, so it will hold the next odd number.
+     367/  FA : 1C                      	INC	RC
+     368/  FB : 1C                      	INC	RC
+     369/  FC :                         
+     370/  FC :                         	; It is enough to iterate only over sqrt(N) candidates to mark all composite numbers up to N.
+     371/  FC :                         	; In our case, N is 65537, so we need to iterate only over the first 256 candidates, i.e.,
+     372/  FC :                         	; when RC.HI stops being 0; we are done.
+     373/  FC : 9C                      	GHI	RC
+     374/  FD : 32 6F                   	BZ	outer_marking_loop
+     375/  FF :                         
+ AS V1.42 Beta [Bld 281] - Source File sieve.asm - Page 9 - 17/03/25 16:43:13
+
+
+     376/  FF :                         
+     377/  FF :                         	; ---------------------------------------------------------------------
+     378/  FF :                         	; Print results
+     379/  FF :                         	; Don't assume any register is now in a usable state; reinitialize required registers:
+     380/  FF :                         	; The code iterates over the `sieve` and tests every bit to determine if the corresponding
+     381/  FF :                         	; number has been marked as a composite or a prime. If it is a prime, it is printed.
+     382/  FF :                         	; R8 is the index into the `sieve`,
+     383/  FF :                         	; R9 points to the `prt_mask`,
+     384/  FF :                         	; RC is the number to print,
+     385/  FF :                         	; RD.LO is used for tabulation. It holds a count of numbers printed in the current row.
+     386/  FF :                         	; ---------------------------------------------------------------------
+     387/  FF :                         print_result:
+     388/  FF :                         	; Print the message stating what is being printed.
+     389/  FF : F8 02                   	LDI	hi(print_start_msg)
+     390/ 101 : B7                      	PHI	R7
+     391/ 102 : F8 65                   	LDI	lo(print_start_msg)
+     392/ 104 : A7                      	PLO	R7
+     393/ 105 : D4                      	SEP	R4
+     394/ 106 : 85                      	DB	hi(mon_put_str)
+     395/ 107 : 26                      	DB	lo(mon_put_str)
+     396/ 108 :                         
+     397/ 108 :                          	; 1 is the first number to test; load it to RC.
+     398/ 108 : F8 01                   	LDI	1
+     399/ 10A : AC                      	PLO	RC
+     400/ 10B : F8 00                   	LDI	0
+     401/ 10D : BC                      	PHI	RC
+     402/ 10E :                         
+     403/ 10E :                         	; Load the address of the `sieve` to R8.
+     404/ 10E : F8 20                   	LDI	hi(sieve)
+     405/ 110 : B8                      	PHI	R8
+     406/ 111 : F8 00                   	LDI	lo(sieve)
+     407/ 113 : A8                      	PLO	R8
+     408/ 114 :                         
+     409/ 114 :                         	; Load the address of `prt_mask` to R9.
+     410/ 114 : F8 02                   	LDI	hi(prt_mask)
+     411/ 116 : B9                      	PHI	R9
+     412/ 117 : F8 08                   	LDI	lo(prt_mask)
+     413/ 119 : A9                      	PLO	R9
+     414/ 11A :                         
+     415/ 11A :                         	; Load 0 to RD to initialize tabulation.
+     416/ 11A : 9C                      	GHI	RC			; RC.HI is currently 0
+     417/ 11B : AD                      	PLO	RD
+     418/ 11C :                         
+     419/ 11C :                         print_res_loop:
+     420/ 11C :                         	; Initialize `prt_mask` for a current bit in `sieve`.
+     421/ 11C :                         	; It is required if we rerun the program without reloading it.
+     422/ 11C : F8 80                   	LDI	0b10000000
+     423/ 11E : 59                      	STR	R9
+     424/ 11F :                         
+     425/ 11F :                         print_res_mask_loop:
+     426/ 11F :                         	; Is the masked-out bit set?
+     427/ 11F : 09                      	LDN	R9			; Load `prt_mask` to D
+     428/ 120 : E8                      	SEX	R8			; R8 is the index into `sieve`
+     429/ 121 : F2                      	AND				; D = D & (*R8)
+     430/ 122 : E2                      	SEX	R2			; restore the default index register
+     431/ 123 : 3A 32                   	BNZ	prt_skip_not_prime	; if D is not zero, then we have a composite.
+     432/ 125 :                         
+     433/ 125 :                         	; D was 0, so it is a prime. Print the number held within RC.
+     434/ 125 : D4                      	SEP	R4
+     435/ 126 : 01                      	DB	hi(prt_16b_num)
+ AS V1.42 Beta [Bld 281] - Source File sieve.asm - Page 10 - 17/03/25 16:43:13
+
+
+     436/ 127 : 4A                      	DB	lo(prt_16b_num)
+     437/ 128 :                         
+     438/ 128 :                         	; Check if 10 numbers have been printed in this row.
+     439/ 128 : 1D                      	INC	RD
+     440/ 129 : 8D                      	GLO	RD
+     441/ 12A : FF 0A                   	SMI	10
+     442/ 12C : 3A 32                   	BNZ	prt_skip_not_prime	; no, skp printing <CR><NL>
+     443/ 12E : AD                      	PLO	RD			; yes, reset the counter
+     444/ 12F :                         
+     445/ 12F :                         	; print <CR><LF>
+     446/ 12F : D4                      	SEP	R4
+     447/ 130 : 85                      	DB	hi(mon_crlf)
+     448/ 131 : 19                      	DB	lo(mon_crlf)
+     449/ 132 :                         
+     450/ 132 :                         prt_skip_not_prime:
+     451/ 132 :                         
+     452/ 132 :                         	; Test the next number.
+     453/ 132 : 1C                      	INC	RC			; Increment the register holding a number to print.
+     454/ 133 :                         
+     455/ 133 :                         	; Shift the `prt_mask`.
+     456/ 133 : 09                      	LDN	R9			; load the `prt_mask` to D
+     457/ 134 : F6                      	SHR				; shift the value in `prt_mask` 1 bit to the right,
+     458/ 135 : 59                      	STR	R9			; store the updated value of `prt_mask`
+     459/ 136 : 3A 1F                   	BNZ	print_res_mask_loop	; `prt_mask` is not zero; continue with the same byte within the `sieve`
+     460/ 138 : 18                      	INC	R8			; otherwise, point to the next byte in the `sieve` array
+     461/ 139 :                         
+     462/ 139 :                         	; If all numbers are tested, R8 will point to `sieve_end`.
+     463/ 139 : 98                      	GHI	R8			; get R8.HI
+     464/ 13A : FF 40                   	SMI	hi(sieve_end)		; subtract the high part of `sieve_end`
+     465/ 13C : 32 40                   	BZ	print_loop_end		; exit loop if equal
+     466/ 13E : 30 1C                   	BR	print_res_loop
+     467/ 140 :                         
+     468/ 140 :                         print_loop_end:
+     469/ 140 :                         
+     470/ 140 :                         	; Print the final message and return to the monitor.
+     471/ 140 : F8 02                   	LDI	hi(final_msg)
+     472/ 142 : B7                      	PHI	R7
+     473/ 143 : F8 87                   	LDI	lo(final_msg)
+     474/ 145 : A7                      	PLO	R7
+     475/ 146 : D4                      	SEP	R4
+     476/ 147 : 85                      	DB	hi(mon_put_str)
+     477/ 148 : 26                      	DB	lo(mon_put_str)
+     478/ 149 :                         
+     479/ 149 :                         	; ---------------------------------------------------------------------
+     480/ 149 :                         	; Exit main function: return the control to the program exit point.
+     481/ 149 :                         	; ---------------------------------------------------------------------
+     482/ 149 : D0                      	SEP	R0
+     483/ 14A :                         
+     484/ 14A :                         
+     485/ 14A :                         prt_16b_num:
+     486/ 14A :                         	; ---------------------------------------------------------------------
+     487/ 14A :                         	; Print a 16-bit number provided in RC.
+     488/ 14A :                         	; R7 is used as a pointer to a string holding a converted number.
+     489/ 14A :                         	; RC holds the 16-bit value to be converted.
+     490/ 14A :                         	; RA, RC and RD are scratch-pad registers for a digit conversion.
+     491/ 14A :                         	; All registers except D and DF are preserved.
+     492/ 14A :                         	; ---------------------------------------------------------------------
+     493/ 14A :                         	; Preserve R7, R8, RA, RC, and RD registers.
+     494/ 14A : 97                      	GHI	R7			; use as a pointer to a string to print
+     495/ 14B : 73                      	STXD
+ AS V1.42 Beta [Bld 281] - Source File sieve.asm - Page 11 - 17/03/25 16:43:13
+
+
+     496/ 14C : 87                      	GLO	R7
+     497/ 14D : 73                      	STXD
+     498/ 14E : 98                      	GHI	R8
+     499/ 14F : 73                      	STXD
+     500/ 150 : 88                      	GLO	R8
+     501/ 151 : 73                      	STXD
+     502/ 152 : 9A                      	GHI	RA			; scratch-pad register for number conversion
+     503/ 153 : 73                      	STXD
+     504/ 154 : 8A                      	GLO	RA
+     505/ 155 : 73                      	STXD
+     506/ 156 : 9C                      	GHI	RC			; holds the 16-bit value to convert
+     507/ 157 : 73                      	STXD
+     508/ 158 : 8C                      	GLO	RC
+     509/ 159 : 73                      	STXD
+     510/ 15A : 9D                      	GHI	RD			; scratch-pad register for number conversion
+     511/ 15B : 73                      	STXD
+     512/ 15C : 8D                      	GLO	RD
+     513/ 15D : 73                      	STXD
+     514/ 15E :                         
+     515/ 15E :                         	; Copy the value pointed to by the provided immediate address to `tmp_conv`.
+     516/ 15E :                         	; Note: `tmp_conv` is 1 byte longer than the number to print.
+     517/ 15E :                         	; Its 1st byte is initialized to 0 (it will hold the division remainder).
+     518/ 15E :                         	; Use RC as the source value and RD as the destination index.
+     519/ 15E : 99                      	GHI	R9			; RA.HI, RC.HI, and RD.HI are the same as R9.HI (`vars:` page address)
+     520/ 15F : BA                      	PHI	RA			; initialize the high part of RA - needed later in the `dec_digit` function
+     521/ 160 : BD                      	PHI	RD			; initialize the high part of RD
+     522/ 161 : F8 0D                   	LDI	lo(tmp_conv)		; load the low part of the `tmp_conv` address
+     523/ 163 : AD                      	PLO	RD			; put it in the low part of RD to make RD point to the destination buffer
+     524/ 164 : F8 00                   	LDI	0			; set 0 to the first byte of `tmp_conv`
+     525/ 166 : 5D                      	STR	RD
+     526/ 167 : 1D                      	INC	RD			; increase RD to point to the 2nd byte of `tmp_conv`
+     527/ 168 : 9C                      	GHI	RC			; copy the 1st byte of the value pointed by RC to the location pointed by RD
+     528/ 169 : 5D                      	STR	RD
+     529/ 16A : 1D                      	INC	RD			; increase RD to point to the 3rd byte of `tmp_conv`
+     530/ 16B : 8C                      	GLO	RC			; copy the 2nd byte of the value pointed by RC to the location pointed by RD
+     531/ 16C : 5D                      	STR	RD
+     532/ 16D :                         
+     533/ 16D :                         	; Initialize the string buffer where the decimal conversion result will be written
+     534/ 16D :                         	; to the default result as if the conversion input was 0.
+     535/ 16D : F8 02                   	LDI	hi(vars)
+     536/ 16F : BC                      	PHI	RC
+     537/ 170 : F8 17                   	LDI	lo(prt_buf_end-1)	; the low part points to the end of the print buffer
+     538/ 172 : AC                      	PLO	RC
+     539/ 173 : EC                      	SEX	RC			; temporary set RC to act as the index register
+     540/ 174 : F8 00                   	LDI	0			; the trailing '\0'
+     541/ 176 : 73                      	STXD
+     542/ 177 : F8 30                   	LDI	'0'			; the corner case for 0, to be overwritten if the input number is not 0
+     543/ 179 : 73                      	STXD
+     544/ 17A : F8 20                   	LDI	0x20			; fill the rest of the buffer with ' '
+     545/ 17C :                         	REPT	5			; an inline macro that repeats commands till ENDM 5 times
+     546/ 17C :                         	STXD
+     547/ 17C :                         	ENDM
+     546/ 17C : 73                      	STXD
+     546/ 17D : 73                      	STXD
+     546/ 17E : 73                      	STXD
+     546/ 17F : 73                      	STXD
+     546/ 180 : 73                      	STXD
+     548/ 181 : E2                      	SEX	R2			; restore the default index register
+     549/ 182 :                         
+     550/ 182 :                         	; Let RC point to the last position of `prt_buf`.
+ AS V1.42 Beta [Bld 281] - Source File sieve.asm - Page 12 - 17/03/25 16:43:13
+
+
+     551/ 182 : F8 17                   	LDI	lo(prt_buf_end-1)
+     552/ 184 : AC                      	PLO	RC
+     553/ 185 :                         
+     554/ 185 :                         	; Convert the 16-bit unsigned value pointed by RA to a decimal string.
+     555/ 185 :                         	; We have at most 5 decimal digits, repeat digit conversion 5 times starting from the rightmost position.
+     556/ 185 :                         	REPT	5			; an inline macro that repeats commands till ENDM 5 times
+     557/ 185 :                         	SEP	R4			; convert a single digit
+     558/ 185 :                         	DB	hi(dec_digit)
+     559/ 185 :                         	DB	lo(dec_digit)
+     560/ 185 :                         	ENDM
+     557/ 185 : D4                      	SEP	R4			; convert a single digit
+     558/ 186 : 01                      	DB	hi(dec_digit)
+     559/ 187 : B3                      	DB	lo(dec_digit)
+     557/ 188 : D4                      	SEP	R4			; convert a single digit
+     558/ 189 : 01                      	DB	hi(dec_digit)
+     559/ 18A : B3                      	DB	lo(dec_digit)
+     557/ 18B : D4                      	SEP	R4			; convert a single digit
+     558/ 18C : 01                      	DB	hi(dec_digit)
+     559/ 18D : B3                      	DB	lo(dec_digit)
+     557/ 18E : D4                      	SEP	R4			; convert a single digit
+     558/ 18F : 01                      	DB	hi(dec_digit)
+     559/ 190 : B3                      	DB	lo(dec_digit)
+     557/ 191 : D4                      	SEP	R4			; convert a single digit
+     558/ 192 : 01                      	DB	hi(dec_digit)
+     559/ 193 : B3                      	DB	lo(dec_digit)
+     561/ 194 :                         
+     562/ 194 :                         	; Print the string with the conversion result. R7 is a pointer to the null-terminated string.
+     563/ 194 : F8 02                   	LDI	hi(prt_buf)
+     564/ 196 : B7                      	PHI	R7
+     565/ 197 : F8 11                   	LDI	lo(prt_buf)
+     566/ 199 : A7                      	PLO	R7
+     567/ 19A : D4                      	SEP	R4
+     568/ 19B : 85                      	DB	hi(mon_put_str)
+     569/ 19C : 26                      	DB	lo(mon_put_str)
+     570/ 19D :                         
+     571/ 19D :                         	; Restore R7, R8, RA, RC, and RD registers.
+     572/ 19D : 60                      	IRX
+     573/ 19E : 72                      	LDXA				; restore RD
+     574/ 19F : AD                      	PLO	RD
+     575/ 1A0 : 72                      	LDXA
+     576/ 1A1 : BD                      	PHI	RD
+     577/ 1A2 : 72                      	LDXA				; restore RC
+     578/ 1A3 : AC                      	PLO	RC
+     579/ 1A4 : 72                      	LDXA
+     580/ 1A5 : BC                      	PHI	RC
+     581/ 1A6 : 72                      	LDXA				; restore RA
+     582/ 1A7 : AA                      	PLO	RA
+     583/ 1A8 : 72                      	LDXA
+     584/ 1A9 : BA                      	PHI	RA
+     585/ 1AA : 72                      	LDXA				; restore R8
+     586/ 1AB : A8                      	PLO	R8
+     587/ 1AC : 72                      	LDXA
+     588/ 1AD : B8                      	PHI	R8
+     589/ 1AE : 72                      	LDXA				; restore R7
+     590/ 1AF : A7                      	PLO	R7
+     591/ 1B0 : F0                      	LDX
+     592/ 1B1 : B7                      	PHI	R7
+     593/ 1B2 :                         	; return
+     594/ 1B2 : D5                      	SEP	R5
+     595/ 1B3 :                         
+ AS V1.42 Beta [Bld 281] - Source File sieve.asm - Page 13 - 17/03/25 16:43:13
+
+
+     596/ 1B3 :                         
+     597/ 1B3 :                         dec_digit:
+     598/ 1B3 :                         	; ---------------------------------------------------------------------
+     599/ 1B3 :                         	; This function converts the single decimal digit by dividing the number
+     600/ 1B3 :                         	; in `tmp_conv` by the number in `radix` and writes the result
+     601/ 1B3 :                         	; to the correct position in `prt_buf`. It is intended to be called
+     602/ 1B3 :                         	; as many times as necessary to convert the whole number.
+     603/ 1B3 :                         	; `tmp_conv` is 3 bytes long, the 1st byte is 0 on input, while the 2nd
+     604/ 1B3 :                         	; and the 3rd byte hold the number to be converted.
+     605/ 1B3 :                         	; As per RCA 1802 convention, the big-endian notation is used.
+     606/ 1B3 :                         	; If the number in `tmp_conv` is 0, the function returns immediately;
+     607/ 1B3 :                                 ; otherwise, it divides that number by a radix value.
+     608/ 1B3 :                         	; The division is performed in place, the result replaces the dividend,
+     609/ 1B3 :                         	; and the remainder is held in the 1st byte of the `tmp_conv` buffer.
+     610/ 1B3 :                         	; The remainder is converted to a character and written in the memory
+     611/ 1B3 :                         	; location pointed out by RC.
+     612/ 1B3 :                         	; The result of division is intended to be used as the input for the
+     613/ 1B3 :                         	; next digit conversion.
+     614/ 1B3 :                         	; The RA register manipulates the content of the `tmp_conv` buffer.
+     615/ 1B3 :                         	; The RD register points to a radix (divisor).
+     616/ 1B3 :                         	; A callee sets the high parts of all registers. This function does not
+     617/ 1B3 :                         	; change them.
+     618/ 1B3 :                         	; ---------------------------------------------------------------------
+     619/ 1B3 : F8 10                   	LDI	lo(radix)		; let RD point to `radix`
+     620/ 1B5 : AD                      	PLO	RD
+     621/ 1B6 : F8 0E                   	LDI	lo(tmp_conv+1)		; let RA point to the first byte of the dividend
+     622/ 1B8 : AA                      	PLO	RA
+     623/ 1B9 :                         
+     624/ 1B9 :                         	; If the dividend is zero, return without performing any conversion.
+     625/ 1B9 :                         	; Note: the dividend is stored in the 2nd and 3rd position of the `tmp_conv` buffer.
+     626/ 1B9 : 4A                      	LDA	RA			; load the 2nd byte in the buffer
+     627/ 1BA : 3A C0                   	BNZ	dec_conv		; the 2nd byte is not zero, perform the conversion
+     628/ 1BC : 0A                      	LDN	RA			; load the 3rd byte
+     629/ 1BD : 3A C0                   	BNZ	dec_conv		; the 3rd byte is not zero, perform the conversion
+     630/ 1BF : D5                      	SEP	R5			; all tested bytes were zero; return immediately.
+     631/ 1C0 :                         
+     632/ 1C0 :                         dec_conv:
+     633/ 1C0 :                         	; Move the `prt_buf` index to where the current conversion result character will be stored.
+     634/ 1C0 : 2C                      	DEC	RC
+     635/ 1C1 :                         
+     636/ 1C1 :                         	; Make RA point to the last byte of `tmp_conv`. It assumes the high part of RA has already been initialized.
+     637/ 1C1 : F8 0F                   	LDI	lo(tmp_conv+2)
+     638/ 1C3 : AA                      	PLO	RA
+     639/ 1C4 :                         
+     640/ 1C4 :                         	; The loop divides a 16-bit value with an 8-bit value. Each loop iteration calculates 1 bit of the result.
+     641/ 1C4 :                         	; The remainder is in the first byte. The following 2 bytes hold the division result.
+     642/ 1C4 : F8 10                   	LDI	16			; 16 iterations
+     643/ 1C6 :                         dec_digit_loop:
+     644/ 1C6 :                         	; Shift left 3 bytes buffer content, and if the value in the 1st byte is greater or equal to radix,
+     645/ 1C6 :                         	; add 1 to the last byte.
+     646/ 1C6 : 73                      	STXD				; preserve the loop counter onto the stack
+     647/ 1C7 :                         
+     648/ 1C7 :                         	; Shift-left the 3rd byte in `tmp_conv`, putting 0 to the lsb position.
+     649/ 1C7 : 0A                      	LDN	RA			; note that RA points to the last byte within the buffer
+     650/ 1C8 : FE                      	SHL
+     651/ 1C9 : 5A                      	STR	RA
+     652/ 1CA : 2A                      	DEC	RA
+     653/ 1CB :                         
+     654/ 1CB :                         	; Shift-left the 2nd byte in `tmp_conv`, filling the lsb position from the DF.
+     655/ 1CB : 0A                      	LDN	RA
+ AS V1.42 Beta [Bld 281] - Source File sieve.asm - Page 14 - 17/03/25 16:43:13
+
+
+     656/ 1CC : 7E                      	SHLC
+     657/ 1CD : 5A                      	STR	RA
+     658/ 1CE : 2A                      	DEC	RA
+     659/ 1CF :                         
+     660/ 1CF :                         	; Shift-left the 1st byte in `tmp_conv`, filling the lsb position from the DF.
+     661/ 1CF : 0A                      	LDN	RA
+     662/ 1D0 : 7E                      	SHLC
+     663/ 1D1 : 5A                      	STR	RA
+     664/ 1D2 :                         
+     665/ 1D2 :                         	; D holds the 1st byte of `tmp_conv` that we want to compare with the radix.
+     666/ 1D2 : ED                      	SEX	RD			; point to radix
+     667/ 1D3 : F7                      	SM				; if the prefix is greater or equal to the radix, the result is non-negative
+     668/ 1D4 : E2                      	SEX	R2			; restore the default index register
+     669/ 1D5 : 3B E1                   	BM	dec_prefix_less		; if the prefix is less than radix, skip subtraction
+     670/ 1D7 :                         
+     671/ 1D7 :                         	; The prefix in the 1st byte of `tmp_conv` was greater or equal to `radix`.
+     672/ 1D7 :                         	; Store the result of the subtraction in the 1st byte of `tmp_conv` and add 1 to the last byte of the
+     673/ 1D7 :                         	; intermediate result. As the last bit of the last byte of `tmp_conv` was zero after the previous shifting,
+     674/ 1D7 :                         	; adding 1 cannot cause the overflow.
+     675/ 1D7 : 5A                      	STR	RA			; store the subtraction result in the 1st byte of `tmp_conv`
+     676/ 1D8 : F8 0F                   	LDI	lo(tmp_conv+2)		; point to the last byte of `tmp_conv`
+     677/ 1DA : AA                      	PLO	RA
+     678/ 1DB : 0A                      	LDN	RA			; add 1 to the last byte of `tmp_conv`
+     679/ 1DC : FC 01                   	ADI	1
+     680/ 1DE : 5A                      	STR	RA			; store the updated last byte of `tmp_conv`
+     681/ 1DF : 30 E4                   	BR	dec_test_if_done	; go to loop counter checking
+     682/ 1E1 :                         
+     683/ 1E1 :                         dec_prefix_less:
+     684/ 1E1 :                         	; Let RA point to the last part of `tmp_conv`.
+     685/ 1E1 : F8 0F                   	LDI	lo(tmp_conv+2)
+     686/ 1E3 : AA                      	PLO	RA
+     687/ 1E4 :                         
+     688/ 1E4 :                         dec_test_if_done
+     689/ 1E4 :                         	; Test if all 16 bits of the division have been calculated
+     690/ 1E4 : 60                      	IRX				; restore the loop counter from the stack
+     691/ 1E5 : F0                      	LDX
+     692/ 1E6 : FF 01                   	SMI	1			; decrease the loop counter
+     693/ 1E8 : 3A C6                   	BNZ	dec_digit_loop		; if the counter is greater than zero, do another loop
+     694/ 1EA :                         
+     695/ 1EA :                         	; The division is completed; the remainder is in the 1st byte of the `tmp_conv` buffer.
+     696/ 1EA :                         	; Convert it to a character and store it in the correct position within the `prt_buf`.
+     697/ 1EA : F8 0D                   	LDI	lo(tmp_conv)		; restore the RA to the beginning of `tmp_conv`
+     698/ 1EC : AA                      	PLO	RA
+     699/ 1ED : 0A                      	LDN	RA			; load the remainder byte
+     700/ 1EE : FC 30                   	ADI	'0'			; make it a character
+     701/ 1F0 : 5C                      	STR	RC			; store it into the current position within `str_buf`
+     702/ 1F1 : F8 00                   	LDI	0			; clear the first byte of `tmp_conv` for the next iteration
+     703/ 1F3 : 5A                      	STR	RA
+     704/ 1F4 :                         	; return
+     705/ 1F4 : D5                      	SEP	R5
+     706/ 1F5 :                         
+     707/ 1F5 :                         
+     708/ 1F5 :                         ; -----------------------------------------------------------------------------
+     709/ 1F5 :                         ; Variables reside in the space from 0x0180 to 0x01FF.
+     710/ 1F5 :                         ; The 16-bit values are stored using the big-endian notation.
+     711/ 1F5 :                         ; -----------------------------------------------------------------------------
+     712/ 200 :                         	ORG	(code+0x0200)
+     713/ 200 :                         vars:
+     714/ 200 :                         mark_mask:
+     715/ 200 :                         	; bitmask used to update a `sieve` byte
+ AS V1.42 Beta [Bld 281] - Source File sieve.asm - Page 15 - 17/03/25 16:43:13
+
+
+     716/ 200 :                         	; it is placed on a page boundary position to optimize the code.
+     717/ 200 : 80                      	DB	0b10000000
+     718/ 201 : 40                      	DB	0b01000000
+     719/ 202 : 20                      	DB	0b00100000
+     720/ 203 : 10                      	DB	0b00010000
+     721/ 204 : 08                      	DB	0b00001000
+     722/ 205 : 04                      	DB	0b00000100
+     723/ 206 : 02                      	DB	0b00000010
+     724/ 207 : 01                      	DB	0b00000001
+     725/ 208 :                         prt_mask:
+     726/ 208 :                         	; bitmask used when testing whether to print a number associated with a bit in the `sieve`
+     727/ 208 : 80                      	DB	0b10000000
+     728/ 209 :                         tmp_mark:
+     729/ 209 :                         	; the 16-bit number being tested or printed
+     730/ 209 : 00 00                   	DB	0, 0
+     731/ 20B :                         step:
+     732/ 20B :                         	; the increment value for the loop that marks composites within the `sieve`
+     733/ 20B :                         	; it is usually twice the value of the current prime
+     734/ 20B : 00 00                   	DB	0, 0
+     735/ 20D :                         tmp_conv:
+     736/ 20D :                         	; used for 16-bit division
+     737/ 20D : 00 00 00                	DB	0, 0, 0
+     738/ 210 :                         radix:
+     739/ 210 :                         	; used to covert the number for printing
+     740/ 210 : 0A                      	DB	10
+     741/ 211 :                         prt_buf:
+     742/ 211 :                         	; buffer where the converted number is stored for printing
+     743/ 211 : 20 00 00 00 00 30 00    	DB	' ', 0, 0, 0, 0, '0', 0
+     744/ 218 :                         prt_buf_end:
+     745/ 218 :                         
+     746/ 218 :                         initial_msg:
+     747/ 218 : 0D 0A 50 6C 65 61 73 65 	DB	"\r\nPlease wait a moment while I am populating the sieve of Eratosthenes ...\n\r\0"
+          220 : 20 77 61 69 74 20 61 20
+          228 : 6D 6F 6D 65 6E 74 20 77
+          230 : 68 69 6C 65 20 49 20 61
+          238 : 6D 20 70 6F 70 75 6C 61
+          240 : 74 69 6E 67 20 74 68 65
+          248 : 20 73 69 65 76 65 20 6F
+          250 : 66 20 45 72 61 74 6F 73
+          258 : 74 68 65 6E 65 73 20 2E
+          260 : 2E 2E 0A 0D 00         
+     748/ 265 :                         print_start_msg:
+     749/ 265 : 0D 0A 50 72 69 6D 65 20 	DB	"\r\nPrime numbers less than 65536\r\n\0"
+          26D : 6E 75 6D 62 65 72 73 20
+          275 : 6C 65 73 73 20 74 68 61
+          27D : 6E 20 36 35 35 33 36 0D
+          285 : 0A 00                  
+     750/ 287 :                         final_msg:
+     751/ 287 : 0D 0A 50 72 65 73 73 20 	DB	"\r\nPress <ENTER> to return to the monitor\r\n\0"
+          28F : 3C 45 4E 54 45 52 3E 20
+          297 : 74 6F 20 72 65 74 75 72
+          29F : 6E 20 74 6F 20 74 68 65
+          2A7 : 20 6D 6F 6E 69 74 6F 72
+          2AF : 0D 0A 00               
+     752/ 2B2 :                         
+     753/ 2B2 :                         
+     754/ 2B2 :                         ; -----------------------------------------------------------------------------
+     755/ 2B2 :                         ; Reserve the space for SCRT stack (R6) from 0x0300 to 0x037F
+     756/ 2B2 :                         ; -----------------------------------------------------------------------------
+     757/ 37F :                         	ORG	(code+0x037F)
+ AS V1.42 Beta [Bld 281] - Source File sieve.asm - Page 16 - 17/03/25 16:43:13
+
+
+     758/ 37F :                         scrt_stack:
+     759/ 37F :                         
+     760/ 37F :                         
+     761/ 37F :                         ; -----------------------------------------------------------------------------
+     762/ 37F :                         ; Reserve the space for the standard stack (R2) from 0x0380 to 0x03FF
+     763/ 37F :                         ; -----------------------------------------------------------------------------
+     764/ 3FF :                         	ORG	(code+0x03FF)
+     765/ 3FF :                         stack:
+     766/ 3FF :                         
+     767/ 3FF :                         
+     768/ 3FF :                         ; -----------------------------------------------------------------------------
+     769/ 3FF :                         ; The array holding the Sieve of Eratosthenes
+     770/ 3FF :                         ; Note: the sieve is represented in the LSB-first order, i.e., 1 is the leftmost
+     771/ 3FF :                         ; bit of the 1st byte, and 65535 is the rightmost bit of the last byte.
+     772/ 3FF :                         ; -----------------------------------------------------------------------------
+     773/2000 :                         	ORG	(0x2000)
+     774/2000 :                         sieve:
+     775/4000 :                         	ORG	(0x4000)
+     776/4000 :                         sieve_end:
+     777/4000 :                         
+     778/4000 :                         
+     779/4000 :                         ; -----------------------------------------------------------------------------
+     780/4000 :                         ; Monitor routines called by this program:
+     781/4000 :                         ; -----------------------------------------------------------------------------
+     782/8000 :                         	ORG	0x8000		; monitor entry point
+     783/8000 :                         monitor:
+     784/8000 :                         
+     785/8000 :                         ;	ORG	0x80A3		; mon_get_ch
+     786/8000 :                         ;mon_get_ch:
+     787/8000 :                         
+     788/8000 :                         ;	ORG	0x8100		; mon_put_ch
+     789/8000 :                         ;mon_put_ch:
+     790/8000 :                         
+     791/8519 :                         	ORG	0x8519		; mon_crlf
+     792/8519 :                         mon_crlf:
+     793/8519 :                         
+     794/85BF :                         	ORG	0x85BF		; mon_prt_b_hex
+     795/85BF :                         mon_prt_b_hex:
+     796/85BF :                         
+     797/8526 :                         	ORG	0x8526		; mon_put_str
+     798/8526 :                         mon_put_str:
+     799/8526 :                         
+     800/8ADB :                         	ORG	0x8ADB		; SCRT call subroutine invoked by SEP R4 and using R6 as SP
+     801/8ADB :                         mon_scrt_call:
+     802/8ADB :                         
+     803/8AED :                         	ORG	0x8AED		; SCRT return subroutine invoked by SEP R5 and using R6 as SP
+     804/8AED :                         mon_scrt_return:
+     805/8AED :                         
+ AS V1.42 Beta [Bld 281] - Source File sieve.asm - Page 17 - 17/03/25 16:43:13
+
+
+  Symbol Table (* = unused):
+  --------------------------
+
+*ARCHITECTURE :                                      "x86_64-unknown-linux" - |
+*BITFUNCSINC :                    1 - | *CASESENSITIVE :                  0 - |
+ CODE :                           0 C | *CONSTPI :     3.141592653589793239 - |
+*DATE :                  "17/03/25" - |  DEC_CONV :                     1C0 C |
+ DEC_DIGIT :                    1B3 C |  DEC_DIGIT_LOOP :               1C6 C |
+ DEC_PREFIX_LESS :              1E1 C |  DEC_TEST_IF_DONE :             1E4 C |
+*FALSE :                          0 - |  FINAL_MSG :                    287 C |
+*FLOATMAX :   1.18973149535725E4932 - | *HAS64 :                          1 - |
+ INITIAL_MSG :                  218 C |  INIT_LOOP :                     34 C |
+ INNER_MARKING_LOOP :           0B4 C | *LISTON :                         1 - |
+*MACEXP :                         7 - |  MAIN :                          21 C |
+ MARK_MASK :                    200 C | *MOMCPU :                      1802 - |
+*MOMCPUNAME :                "1802" - |  MONITOR :                     8000 C |
+ MON_CRLF :                    8519 C | *MON_PRT_B_HEX :               85BF C |
+ MON_PUT_STR :                 8526 C |  MON_SCRT_CALL :               8ADB C |
+ MON_SCRT_RETURN :             8AED C | *NESTMAX :                      100 - |
+ NEXT_MARKING_NUMBER :          0FA C |  OUTER_MARKING_LOOP :            6F C |
+ PRINT_LOOP_END :               140 C | *PRINT_RESULT :                 0FF C |
+ PRINT_RES_LOOP :               11C C |  PRINT_RES_MASK_LOOP :          11F C |
+ PRINT_START_MSG :              265 C |  PRT_16B_NUM :                  14A C |
+ PRT_BUF :                      211 C |  PRT_BUF_END :                  218 C |
+ PRT_MASK :                     208 C |  PRT_SKIP_NOT_PRIME :           132 C |
+ R0 :                             0 - | *R1 :                             1 - |
+ R2 :                             2 - |  R3 :                             3 - |
+ R4 :                             4 - |  R5 :                             5 - |
+ R6 :                             6 - |  R7 :                             7 - |
+ R8 :                             8 - |  R9 :                             9 - |
+ RA :                            0A - |  RADIX :                        210 C |
+*RB :                            0B - |  RC :                            0C - |
+ RD :                            0D - | *RE :                            0E - |
+*RELAXED :                        1 - | *RF :                            0F - |
+ SCRT_STACK :                   37F C |  SIEVE :                       2000 C |
+ SIEVE_END :                   4000 C |  STACK :                        3FF C |
+ STEP :                         20B C | *TIME :                  "16:43:13" - |
+ TMP_CONV :                     20D C |  TMP_MARK :                     209 C |
+*TRUE :                           1 - |  VARS :                         200 C |
+*VERSION :                     142F - |
+
+     72 symbols
+     23 unused symbols
+
+ AS V1.42 Beta [Bld 281] - Source File sieve.asm - Page 18 - 17/03/25 16:43:13
+
+
+  Defined Functions:
+  ------------------
+
+ROTRN                                 | ROTLN                                
+SHRN                                  | SHLN                                 
+GETBIT                                | EVEN                                 
+ODD                                   | LOWORD                               
+HIWORD                                | LO                                   
+HI                                    | CUTOUT                               
+INVMASK                               | MASK                                 
+
+ AS V1.42 Beta [Bld 281] - Source File sieve.asm - Page 19 - 17/03/25 16:43:13
+
+
+  Code Pages:
+  ----------
+
+STANDARD (0 changed characters)
+
+1 code page
+
+0.01 seconds assembly time
+
+    886 lines source file
+   1002 lines incl. macro expansions
+      2 passes
+      0 errors
+      0 warnings
