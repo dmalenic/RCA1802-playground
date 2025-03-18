@@ -1,4 +1,4 @@
- AS V1.42 Beta [Bld 281] - Source File fibonacci.asm - Page 1 - 17/03/25 16:43:13
+ AS V1.42 Beta [Bld 281] - Source File fibonacci.asm - Page 1 - 18/03/25 18:44:43
 
 
        1/   0 :                         ; -----------------------------------------------------------------------------
@@ -61,7 +61,7 @@
       58/   0 :                         ;
       59/   0 :                         ; Press <ENTER> to return to the monitor
       60/   0 :                         ;
- AS V1.42 Beta [Bld 281] - Source File fibonacci.asm - Page 2 - 17/03/25 16:43:13
+ AS V1.42 Beta [Bld 281] - Source File fibonacci.asm - Page 2 - 18/03/25 18:44:43
 
 
       61/   0 :                         ; -----------------------------------------------------------------------------
@@ -124,7 +124,7 @@
      109/   0 :                         
      110/   0 :                         
      111/   0 :                         ; -----------------------------------------------------------------------------
- AS V1.42 Beta [Bld 281] - Source File fibonacci.asm - Page 3 - 17/03/25 16:43:13
+ AS V1.42 Beta [Bld 281] - Source File fibonacci.asm - Page 3 - 18/03/25 18:44:43
 
 
      112/   0 :                         ; MACROS
@@ -140,648 +140,645 @@
      122/   0 :                         ; the `fib_l_end` location.
      123/   0 :                         ; -----------------------------------------------------------------------------
      124/   0 :                         add_dp	MACRO a,b
-     125/   0 :                         	SEX	b			; let X point to the register holding the 2nd operand address
+     125/   0 :                         	SEX	a			; let X point to the register holding the 2nd operand address
      126/   0 :                         	INC	a			; point to the 4th byte of a
      127/   0 :                         	INC	a
      128/   0 :                         	INC	a
      129/   0 :                         	INC	b			; point to the 4th byte of b
      130/   0 :                         	INC	b
      131/   0 :                         	INC	b
-     132/   0 :                         	LDN	a			; load the 4th byte of a
+     132/   0 :                         	LDN	b			; load the 4th byte of a
      133/   0 :                         	ADD				; lo(M[A]) = lo(M[a]) + lo(M[b])
-     134/   0 :                         	STR	a			; store the 4th byte of a
-     135/   0 :                         	DEC	a			; point to the 3rd byte of a
-     136/   0 :                         	DEC	b			; point to the 3rd byte of b
-     137/   0 :                         	LDN	a			; load the the 3rd byte of a
-     138/   0 :                         	ADC				; lo(M[A]) = lo(M[a]) + lo(M[b]) + DF
-     139/   0 :                         	STR	a			; store the 3rd byte of a
-     140/   0 :                         	DEC	a			; point to the 2nd byte of a
-     141/   0 :                         	DEC	b			; point to the 2nd byte of b
-     142/   0 :                         	LDN	a			; load the 2nd byte of a
-     143/   0 :                         	ADC				; lo(M[A]) = lo(M[a]) + lo(M[b]) + DF
-     144/   0 :                         	STR	a			; store the 2nd byte of a
-     145/   0 :                         	DEC	a			; point to the 1st byte of a
-     146/   0 :                         	DEC	b			; point to the 1st byte of b
-     147/   0 :                         	LDN	a			; load the 1st byte of a
-     148/   0 :                         	ADC				; lo(M[A]) = lo(M[a]) + lo(M[b]) + DF
-     149/   0 :                         	SEX	R2			; restore X to point to the stack
-     150/   0 :                         	BDF	fib_l_end		; if there was a carry, we are over 32-bits; exit
-     151/   0 :                         	STR	a			; otherwise, store the 1st byte of a
-     152/   0 :                         	ENDM
+     134/   0 :                         	STXD				; store the 4th byte of a, point to the 3rd byte of a
+     135/   0 :                         	DEC	b			; point to the 3rd byte of b
+     136/   0 :                         	LDN	b			; load the the 3rd byte of a
+     137/   0 :                         	ADC				; lo(M[A]) = lo(M[a]) + lo(M[b]) + DF
+     138/   0 :                         	STXD				; store the 3rd byte of a, point to the 2nd byte of a
+     139/   0 :                         	DEC	b			; point to the 2nd byte of b
+     140/   0 :                         	LDN	b			; load the 2nd byte of a
+     141/   0 :                         	ADC				; lo(M[A]) = lo(M[a]) + lo(M[b]) + DF
+     142/   0 :                         	STXD				; store the 2nd byte of a, point to the 1st byte of a
+     143/   0 :                         	DEC	b			; point to the 1st byte of b
+     144/   0 :                         	LDN	b			; load the 1st byte of a
+     145/   0 :                         	ADC				; lo(M[A]) = lo(M[a]) + lo(M[b]) + DF
+     146/   0 :                         	SEX	R2			; restore X to point to the stack
+     147/   0 :                         	BDF	fib_l_end		; if there was a carry, we are over 32-bits; exit
+     148/   0 :                         	STR	a			; otherwise, store the 1st byte of a,
+     149/   0 :                         	; the pointer to a is on the 1st byte of a
+     150/   0 :                         	; the pointer to b is on the 1st byte of b
+     151/   0 :                         	ENDM
+     152/   0 :                         
      153/   0 :                         
-     154/   0 :                         
-     155/   0 :                         ; register aliases ------------------------------------------------------------
-     156/   0 : =0H                     R0      EQU     0
-     157/   0 : =1H                     R1      EQU     1
-     158/   0 : =2H                     R2      EQU     2
-     159/   0 : =3H                     R3      EQU     3
-     160/   0 : =4H                     R4      EQU     4
-     161/   0 : =5H                     R5      EQU     5
-     162/   0 : =6H                     R6      EQU     6
-     163/   0 : =7H                     R7      EQU     7
-     164/   0 : =8H                     R8      EQU     8
-     165/   0 : =9H                     R9      EQU     9
-     166/   0 : =0AH                    RA      EQU     10
-     167/   0 : =0BH                    RB      EQU     11
-     168/   0 : =0CH                    RC      EQU     12
-     169/   0 : =0DH                    RD      EQU     13
-     170/   0 : =0EH                    RE      EQU     14
-     171/   0 : =0FH                    RF      EQU     15
- AS V1.42 Beta [Bld 281] - Source File fibonacci.asm - Page 4 - 17/03/25 16:43:13
+     154/   0 :                         ; register aliases ------------------------------------------------------------
+     155/   0 : =0H                     R0      EQU     0
+     156/   0 : =1H                     R1      EQU     1
+     157/   0 : =2H                     R2      EQU     2
+     158/   0 : =3H                     R3      EQU     3
+     159/   0 : =4H                     R4      EQU     4
+     160/   0 : =5H                     R5      EQU     5
+     161/   0 : =6H                     R6      EQU     6
+     162/   0 : =7H                     R7      EQU     7
+     163/   0 : =8H                     R8      EQU     8
+     164/   0 : =9H                     R9      EQU     9
+     165/   0 : =0AH                    RA      EQU     10
+     166/   0 : =0BH                    RB      EQU     11
+     167/   0 : =0CH                    RC      EQU     12
+     168/   0 : =0DH                    RD      EQU     13
+     169/   0 : =0EH                    RE      EQU     14
+     170/   0 : =0FH                    RF      EQU     15
+     171/   0 :                         
+ AS V1.42 Beta [Bld 281] - Source File fibonacci.asm - Page 4 - 18/03/25 18:44:43
 
 
      172/   0 :                         
-     173/   0 :                         
-     174/   0 :                         ; -----------------------------------------------------------------------------
-     175/   0 :                         ; PROGRAM
-     176/   0 :                         ; -----------------------------------------------------------------------------
-     177/   0 :                                 ORG     0
-     178/   0 :                         code:
-     179/   0 :                         
-     180/   0 :                         	; ---------------------------------------------------------------------
-     181/   0 :                         	; Initialize the program
-     182/   0 :                         	; ---------------------------------------------------------------------
-     183/   0 :                         	; When started after the reset, or by executing the monitor R0000 command:
-     184/   0 :                         	; R0 is set to be both the program counter and the stack pointer
-     185/   0 :                         	; R1 will become a program counter in the case of an interrupt
-     186/   0 :                         	; R2 will become a stack pointer in the case of an interrupt
-     187/   0 :                         	; The following section configures the registers::
-     188/   0 :                         	; R2 points to the area that will become a stack pointer when control is passed to the main function
-     189/   0 :                         	; R3 will become a program counter and point to the main function
-     190/   0 :                         	; R4 will point to SCRT call routine
-     191/   0 :                         	; R5 will point to SCRT return routine
-     192/   0 :                         	; R6 will point to SCRT stack
-     193/   0 :                         	; ---------------------------------------------------------------------
-     194/   0 :                         
-     195/   0 :                         	; Initialize R4 to 0x8ADB and R5 to 0x8AED to enable SCRT.
-     196/   0 : F8 8A                   	LDI	hi(mon_scrt_call)
-     197/   2 : B4                      	PHI	R4
-     198/   3 : B5                      	PHI	R5
-     199/   4 : F8 DB                   	LDI	lo(mon_scrt_call)
-     200/   6 : A4                      	PLO	R4
-     201/   7 : F8 ED                   	LDI	lo(mon_scrt_return)
-     202/   9 : A5                      	PLO	R5
-     203/   A :                         
-     204/   A :                         	; Initialize R6 to SCRT_stack.
-     205/   A : F8 02                   	LDI	hi(scrt_stack)
-     206/   C : B6                      	PHI	R6
-     207/   D : F8 7F                   	LDI	lo(scrt_stack)
-     208/   F : A6                      	PLO	R6
-     209/  10 :                         
-     210/  10 :                         	; Configure R3 to point to the main function.
-     211/  10 : F8 21                   	LDI	lo(main)
-     212/  12 : A3                      	PLO	R3
-     213/  13 : 90                      	GHI	R0
-     214/  14 : B3                      	PHI	R3
-     215/  15 :                         
-     216/  15 :                         	; Configure R2 to point to the stack.
-     217/  15 : F8 02                   	LDI	hi(stack)
-     218/  17 : B2                      	PHI	R2
-     219/  18 : F8 FF                   	LDI	lo(stack)
-     220/  1A : A2                      	PLO	R2
-     221/  1B :                         
-     222/  1B :                         	; Pass the control to the main function.
-     223/  1B : E2                      	SEX	R2			; Make R2 the default index register, i.e., the stack pointer.
-     224/  1C : D3                      	SEP	R3			; Call the main function.
-     225/  1D :                         
-     226/  1D :                         	; ---------------------------------------------------------------------
-     227/  1D :                         	; The program exit point.
-     228/  1D :                         	; ---------------------------------------------------------------------
-     229/  1D :                         	; R0 points to this location, so when SEP 0 is executed at the end of the main,
-     230/  1D :                         	; the program execution will resume from this point.
-     231/  1D : E0                      	SEX	R0			; R0 is now the default index register, similar to what it was after the reset.
- AS V1.42 Beta [Bld 281] - Source File fibonacci.asm - Page 5 - 17/03/25 16:43:13
+     173/   0 :                         ; -----------------------------------------------------------------------------
+     174/   0 :                         ; PROGRAM
+     175/   0 :                         ; -----------------------------------------------------------------------------
+     176/   0 :                                 ORG     0
+     177/   0 :                         code:
+     178/   0 :                         
+     179/   0 :                         	; ---------------------------------------------------------------------
+     180/   0 :                         	; Initialize the program
+     181/   0 :                         	; ---------------------------------------------------------------------
+     182/   0 :                         	; When started after the reset, or by executing the monitor R0000 command:
+     183/   0 :                         	; R0 is set to be both the program counter and the stack pointer
+     184/   0 :                         	; R1 will become a program counter in the case of an interrupt
+     185/   0 :                         	; R2 will become a stack pointer in the case of an interrupt
+     186/   0 :                         	; The following section configures the registers::
+     187/   0 :                         	; R2 points to the area that will become a stack pointer when control is passed to the main function
+     188/   0 :                         	; R3 will become a program counter and point to the main function
+     189/   0 :                         	; R4 will point to SCRT call routine
+     190/   0 :                         	; R5 will point to SCRT return routine
+     191/   0 :                         	; R6 will point to SCRT stack
+     192/   0 :                         	; ---------------------------------------------------------------------
+     193/   0 :                         
+     194/   0 :                         	; Initialize R4 to 0x8ADB and R5 to 0x8AED to enable SCRT.
+     195/   0 : F8 8A                   	LDI	hi(mon_scrt_call)
+     196/   2 : B4                      	PHI	R4
+     197/   3 : B5                      	PHI	R5
+     198/   4 : F8 DB                   	LDI	lo(mon_scrt_call)
+     199/   6 : A4                      	PLO	R4
+     200/   7 : F8 ED                   	LDI	lo(mon_scrt_return)
+     201/   9 : A5                      	PLO	R5
+     202/   A :                         
+     203/   A :                         	; Initialize R6 to SCRT_stack.
+     204/   A : F8 02                   	LDI	hi(scrt_stack)
+     205/   C : B6                      	PHI	R6
+     206/   D : F8 7F                   	LDI	lo(scrt_stack)
+     207/   F : A6                      	PLO	R6
+     208/  10 :                         
+     209/  10 :                         	; Configure R3 to point to the main function.
+     210/  10 : F8 21                   	LDI	lo(main)
+     211/  12 : A3                      	PLO	R3
+     212/  13 : 90                      	GHI	R0
+     213/  14 : B3                      	PHI	R3
+     214/  15 :                         
+     215/  15 :                         	; Configure R2 to point to the stack.
+     216/  15 : F8 02                   	LDI	hi(stack)
+     217/  17 : B2                      	PHI	R2
+     218/  18 : F8 FF                   	LDI	lo(stack)
+     219/  1A : A2                      	PLO	R2
+     220/  1B :                         
+     221/  1B :                         	; Pass the control to the main function.
+     222/  1B : E2                      	SEX	R2			; Make R2 the default index register, i.e., the stack pointer.
+     223/  1C : D3                      	SEP	R3			; Call the main function.
+     224/  1D :                         
+     225/  1D :                         	; ---------------------------------------------------------------------
+     226/  1D :                         	; The program exit point.
+     227/  1D :                         	; ---------------------------------------------------------------------
+     228/  1D :                         	; R0 points to this location, so when SEP 0 is executed at the end of the main,
+     229/  1D :                         	; the program execution will resume from this point.
+     230/  1D : E0                      	SEX	R0			; R0 is now the default index register, similar to what it was after the reset.
+     231/  1E : C0 80 00                	LBR	monitor			; Jump to the monitor.
+ AS V1.42 Beta [Bld 281] - Source File fibonacci.asm - Page 5 - 18/03/25 18:44:43
 
 
-     232/  1E : C0 80 00                	LBR	monitor			; Jump to the monitor.
-     233/  21 :                         
-     234/  21 :                         	; ---------------------------------------------------------------------
-     235/  21 :                         	; The main function.
-     236/  21 :                         	; ---------------------------------------------------------------------
-     237/  21 :                         main:
-     238/  21 : F8 01                   	LDI	hi(vars)		; load the page part of the variables section
-     239/  23 : B7                      	PHI	R7			; the high part of `vars` holds the page where all strings reside
-     240/  24 : B8                      	PHI	R8			; the high part of `first`
-     241/  25 : B9                      	PHI	R9			; the high part of `second`
-     242/  26 : F8 83                   	LDI	lo(first+3)		; set the low part to the last byte of `first`
-     243/  28 : A8                      	PLO	R8
-     244/  29 : F8 87                   	LDI	lo(second+3)		; set the low part to the last byte of  `second`
-     245/  2B : A9                      	PLO	R9
-     246/  2C :                         
-     247/  2C :                         	; print the initial message
-     248/  2C : F8 9A                   	LDI	lo(initial_msg)
-     249/  2E : A7                      	PLO	R7
-     250/  2F : D4                      	SEP	R4
-     251/  30 : 85                      	DB	hi(mon_put_str)
-     252/  31 : 26                      	DB	lo(mon_put_str)
-     253/  32 :                         
-     254/  32 :                         	; Initialize the `first` and the `second` to enable the program invocation without reloading.
-     255/  32 :                         	; Let the `first` be DB 0, 0, 0, 0.
-     256/  32 : E8                      	SEX	R8			; temporary make R8 index pointer
-     257/  33 : F8 00                   	LDI	0
-     258/  35 : 73                      	STXD
-     259/  36 : 73                      	STXD
-     260/  37 : 73                      	STXD
-     261/  38 : 58                      	STR	R8
-     262/  39 :                         	; R8 points to the first byte of `first`.
-     263/  39 :                         
-     264/  39 :                         	; Let the `second` be DB 0, 0, 0, 1.
-     265/  39 : E9                      	SEX	R9			; temporary make R9 index pointer
-     266/  3A : F8 01                   	LDI	1
-     267/  3C : 73                      	STXD
-     268/  3D : F8 00                   	LDI	0
-     269/  3F : 73                      	STXD
-     270/  40 : 73                      	STXD
-     271/  41 : 59                      	STR	R9
-     272/  42 :                         	; R9 points to the first byte of `second`.
-     273/  42 :                         
-     274/  42 : E2                      	SEX	R2			; restore the default index pointer
-     275/  43 :                         
-     276/  43 :                         	; Print the `first` holding the initial 0.
-     277/  43 : D4                      	SEP	R4
-     278/  44 : 00                      	DB	hi(prt_32b_num)
-     279/  45 : 90                      	DB	lo(prt_32b_num)
-     280/  46 : 80                      	DB	lo(first)
-     281/  47 :                         
-     282/  47 :                         	; The fibonacci sequence calculation loop calculates 2 fibonacci numbers per iteration.
-     283/  47 :                         	; The exit condition is the 32-bit overflow - see `add_dp` for the macro definition where
-     284/  47 :                         	; the check is implemented.
-     285/  47 :                         fib_l:
-     286/  47 :                         	; Print the `second`.
-     287/  47 : D4                      	SEP	R4
-     288/  48 : 00                      	DB	hi(prt_32b_num)
-     289/  49 : 90                      	DB	lo(prt_32b_num)
-     290/  4A : 84                      	DB	lo(second)
-     291/  4B :                         
- AS V1.42 Beta [Bld 281] - Source File fibonacci.asm - Page 6 - 17/03/25 16:43:13
+     232/  21 :                         
+     233/  21 :                         	; ---------------------------------------------------------------------
+     234/  21 :                         	; The main function.
+     235/  21 :                         	; ---------------------------------------------------------------------
+     236/  21 :                         main:
+     237/  21 : F8 01                   	LDI	hi(vars)		; load the page part of the variables section
+     238/  23 : B7                      	PHI	R7			; the high part of `vars` holds the page where all strings reside
+     239/  24 : B8                      	PHI	R8			; the high part of `first`
+     240/  25 : B9                      	PHI	R9			; the high part of `second`
+     241/  26 : F8 83                   	LDI	lo(first+3)		; set the low part to the last byte of `first`
+     242/  28 : A8                      	PLO	R8
+     243/  29 : F8 87                   	LDI	lo(second+3)		; set the low part to the last byte of  `second`
+     244/  2B : A9                      	PLO	R9
+     245/  2C :                         
+     246/  2C :                         	; print the initial message
+     247/  2C : F8 9A                   	LDI	lo(initial_msg)
+     248/  2E : A7                      	PLO	R7
+     249/  2F : D4                      	SEP	R4
+     250/  30 : 85                      	DB	hi(mon_put_str)
+     251/  31 : 26                      	DB	lo(mon_put_str)
+     252/  32 :                         
+     253/  32 :                         	; Initialize the `first` and the `second` to enable the program invocation without reloading.
+     254/  32 :                         	; Let the `first` be DB 0, 0, 0, 0.
+     255/  32 : E8                      	SEX	R8			; temporary make R8 index pointer
+     256/  33 : F8 00                   	LDI	0
+     257/  35 : 73                      	STXD
+     258/  36 : 73                      	STXD
+     259/  37 : 73                      	STXD
+     260/  38 : 58                      	STR	R8
+     261/  39 :                         	; R8 points to the first byte of `first`.
+     262/  39 :                         
+     263/  39 :                         	; Let the `second` be DB 0, 0, 0, 1.
+     264/  39 : E9                      	SEX	R9			; temporary make R9 index pointer
+     265/  3A : F8 01                   	LDI	1
+     266/  3C : 73                      	STXD
+     267/  3D : F8 00                   	LDI	0
+     268/  3F : 73                      	STXD
+     269/  40 : 73                      	STXD
+     270/  41 : 59                      	STR	R9
+     271/  42 :                         	; R9 points to the first byte of `second`.
+     272/  42 :                         
+     273/  42 : E2                      	SEX	R2			; restore the default index pointer
+     274/  43 :                         
+     275/  43 :                         	; Print the `first` holding the initial 0.
+     276/  43 : D4                      	SEP	R4
+     277/  44 : 00                      	DB	hi(prt_32b_num)
+     278/  45 : 8A                      	DB	lo(prt_32b_num)
+     279/  46 : 80                      	DB	lo(first)
+     280/  47 :                         
+     281/  47 :                         	; The fibonacci sequence calculation loop calculates 2 fibonacci numbers per iteration.
+     282/  47 :                         	; The exit condition is the 32-bit overflow - see `add_dp` for the macro definition where
+     283/  47 :                         	; the check is implemented.
+     284/  47 :                         fib_l:
+     285/  47 :                         	; Print the `second`.
+     286/  47 : D4                      	SEP	R4
+     287/  48 : 00                      	DB	hi(prt_32b_num)
+     288/  49 : 8A                      	DB	lo(prt_32b_num)
+     289/  4A : 84                      	DB	lo(second)
+     290/  4B :                         
+     291/  4B :                         	; first = first+second
+ AS V1.42 Beta [Bld 281] - Source File fibonacci.asm - Page 6 - 18/03/25 18:44:43
 
 
-     292/  4B :                         	; first = first+second
-     293/  4B : (MACRO)[0]              	add_dp	R8, R9
-     293/  4B : E9                              SEX     R9                       ; let X point to the register holding the 2nd operand address
-     293/  4C : 18                              INC     R8                       ; point to the 4th byte of R8
-     293/  4D : 18                              INC     R8
-     293/  4E : 18                              INC     R8
-     293/  4F : 19                              INC     R9                       ; point to the 4th byte of R9
-     293/  50 : 19                              INC     R9
-     293/  51 : 19                              INC     R9
-     293/  52 : 08                              LDN     R8                       ; load the 4th byte of R8
-     293/  53 : F4                              ADD                             ; lo(M[R8]) = lo(M[R8]) + lo(M[R9])
-     293/  54 : 58                              STR     R8                       ; store the 4th byte of R8
-     293/  55 : 28                              DEC     R8                       ; point to the 3rd byte of R8
-     293/  56 : 29                              DEC     R9                       ; point to the 3rd byte of R9
-     293/  57 : 08                              LDN     R8                       ; load the the 3rd byte of R8
-     293/  58 : 74                              ADC                             ; lo(M[R8]) = lo(M[R8]) + lo(M[R9]) + DF
-     293/  59 : 58                              STR     R8                       ; store the 3rd byte of R8
-     293/  5A : 28                              DEC     R8                       ; point to the 2nd byte of R8
-     293/  5B : 29                              DEC     R9                       ; point to the 2nd byte of R9
-     293/  5C : 08                              LDN     R8                       ; load the 2nd byte of R8
-     293/  5D : 74                              ADC                             ; lo(M[R8]) = lo(M[R8]) + lo(M[R9]) + DF
-     293/  5E : 58                              STR     R8                       ; store the 2nd byte of R8
-     293/  5F : 28                              DEC     R8                       ; point to the 1st byte of R8
-     293/  60 : 29                              DEC     R9                       ; point to the 1st byte of R9
-     293/  61 : 08                              LDN     R8                       ; load the 1st byte of R8
-     293/  62 : 74                              ADC                             ; lo(M[R8]) = lo(M[R8]) + lo(M[R9]) + DF
-     293/  63 : E2                              SEX     R2                      ; restore X to point to the stack
-     293/  64 : 33 89                           BDF     fib_l_end               ; if there was R8 carry, we are over 32-bits; exit
-     293/  66 : 58                              STR     R8                       ; otherwise, store the 1st byte of R8
-     294/  67 :                         
-     295/  67 :                         	; Print the `first`
-     296/  67 : D4                      	SEP	R4
-     297/  68 : 00                      	DB	hi(prt_32b_num)
-     298/  69 : 90                      	DB	lo(prt_32b_num)
-     299/  6A : 80                      	DB	lo(first)
-     300/  6B :                         
-     301/  6B :                         	; second = second+first
-     302/  6B : (MACRO)[1]              	add_dp	R9, R8
-     302/  6B : E8                              SEX     R8                       ; let X point to the register holding the 2nd operand address
-     302/  6C : 19                              INC     R9                       ; point to the 4th byte of R9
-     302/  6D : 19                              INC     R9
-     302/  6E : 19                              INC     R9
-     302/  6F : 18                              INC     R8                       ; point to the 4th byte of R8
-     302/  70 : 18                              INC     R8
-     302/  71 : 18                              INC     R8
-     302/  72 : 09                              LDN     R9                       ; load the 4th byte of R9
-     302/  73 : F4                              ADD                             ; lo(M[R9]) = lo(M[R9]) + lo(M[R8])
-     302/  74 : 59                              STR     R9                       ; store the 4th byte of R9
-     302/  75 : 29                              DEC     R9                       ; point to the 3rd byte of R9
-     302/  76 : 28                              DEC     R8                       ; point to the 3rd byte of R8
-     302/  77 : 09                              LDN     R9                       ; load the the 3rd byte of R9
-     302/  78 : 74                              ADC                             ; lo(M[R9]) = lo(M[R9]) + lo(M[R8]) + DF
-     302/  79 : 59                              STR     R9                       ; store the 3rd byte of R9
-     302/  7A : 29                              DEC     R9                       ; point to the 2nd byte of R9
-     302/  7B : 28                              DEC     R8                       ; point to the 2nd byte of R8
-     302/  7C : 09                              LDN     R9                       ; load the 2nd byte of R9
-     302/  7D : 74                              ADC                             ; lo(M[R9]) = lo(M[R9]) + lo(M[R8]) + DF
-     302/  7E : 59                              STR     R9                       ; store the 2nd byte of R9
-     302/  7F : 29                              DEC     R9                       ; point to the 1st byte of R9
-     302/  80 : 28                              DEC     R8                       ; point to the 1st byte of R8
- AS V1.42 Beta [Bld 281] - Source File fibonacci.asm - Page 7 - 17/03/25 16:43:13
+     292/  4B : (MACRO)[0]              	add_dp	R8, R9
+     292/  4B : E8                              SEX     R8                       ; let X point to the register holding the 2nd operand address
+     292/  4C : 18                              INC     R8                       ; point to the 4th byte of R8
+     292/  4D : 18                              INC     R8
+     292/  4E : 18                              INC     R8
+     292/  4F : 19                              INC     R9                       ; point to the 4th byte of R9
+     292/  50 : 19                              INC     R9
+     292/  51 : 19                              INC     R9
+     292/  52 : 09                              LDN     R9                       ; load the 4th byte of R8
+     292/  53 : F4                              ADD                             ; lo(M[R8]) = lo(M[R8]) + lo(M[R9])
+     292/  54 : 73                              STXD                            ; store the 4th byte of R8, point to the 3rd byte of R8
+     292/  55 : 29                              DEC     R9                       ; point to the 3rd byte of R9
+     292/  56 : 09                              LDN     R9                       ; load the the 3rd byte of R8
+     292/  57 : 74                              ADC                             ; lo(M[R8]) = lo(M[R8]) + lo(M[R9]) + DF
+     292/  58 : 73                              STXD                            ; store the 3rd byte of R8, point to the 2nd byte of R8
+     292/  59 : 29                              DEC     R9                       ; point to the 2nd byte of R9
+     292/  5A : 09                              LDN     R9                       ; load the 2nd byte of R8
+     292/  5B : 74                              ADC                             ; lo(M[R8]) = lo(M[R8]) + lo(M[R9]) + DF
+     292/  5C : 73                              STXD                            ; store the 2nd byte of R8, point to the 1st byte of R8
+     292/  5D : 29                              DEC     R9                       ; point to the 1st byte of R9
+     292/  5E : 09                              LDN     R9                       ; load the 1st byte of R8
+     292/  5F : 74                              ADC                             ; lo(M[R8]) = lo(M[R8]) + lo(M[R9]) + DF
+     292/  60 : E2                              SEX     R2                      ; restore X to point to the stack
+     292/  61 : 33 83                           BDF     fib_l_end               ; if there was R8 carry, we are over 32-bits; exit
+     292/  63 : 58                              STR     R8                       ; otherwise, store the 1st byte of R8,
+     292/  64 :                                 ; the pointer to R8 is on the 1st byte of R8
+     292/  64 :                                 ; the pointer to R9 is on the 1st byte of R9
+     293/  64 :                         
+     294/  64 :                         	; Print the `first`
+     295/  64 : D4                      	SEP	R4
+     296/  65 : 00                      	DB	hi(prt_32b_num)
+     297/  66 : 8A                      	DB	lo(prt_32b_num)
+     298/  67 : 80                      	DB	lo(first)
+     299/  68 :                         
+     300/  68 :                         	; second = second+first
+     301/  68 : (MACRO)[1]              	add_dp	R9, R8
+     301/  68 : E9                              SEX     R9                       ; let X point to the register holding the 2nd operand address
+     301/  69 : 19                              INC     R9                       ; point to the 4th byte of R9
+     301/  6A : 19                              INC     R9
+     301/  6B : 19                              INC     R9
+     301/  6C : 18                              INC     R8                       ; point to the 4th byte of R8
+     301/  6D : 18                              INC     R8
+     301/  6E : 18                              INC     R8
+     301/  6F : 08                              LDN     R8                       ; load the 4th byte of R9
+     301/  70 : F4                              ADD                             ; lo(M[R9]) = lo(M[R9]) + lo(M[R8])
+     301/  71 : 73                              STXD                            ; store the 4th byte of R9, point to the 3rd byte of R9
+     301/  72 : 28                              DEC     R8                       ; point to the 3rd byte of R8
+     301/  73 : 08                              LDN     R8                       ; load the the 3rd byte of R9
+     301/  74 : 74                              ADC                             ; lo(M[R9]) = lo(M[R9]) + lo(M[R8]) + DF
+     301/  75 : 73                              STXD                            ; store the 3rd byte of R9, point to the 2nd byte of R9
+     301/  76 : 28                              DEC     R8                       ; point to the 2nd byte of R8
+     301/  77 : 08                              LDN     R8                       ; load the 2nd byte of R9
+     301/  78 : 74                              ADC                             ; lo(M[R9]) = lo(M[R9]) + lo(M[R8]) + DF
+     301/  79 : 73                              STXD                            ; store the 2nd byte of R9, point to the 1st byte of R9
+     301/  7A : 28                              DEC     R8                       ; point to the 1st byte of R8
+     301/  7B : 08                              LDN     R8                       ; load the 1st byte of R9
+     301/  7C : 74                              ADC                             ; lo(M[R9]) = lo(M[R9]) + lo(M[R8]) + DF
+     301/  7D : E2                              SEX     R2                      ; restore X to point to the stack
+     301/  7E : 33 83                           BDF     fib_l_end               ; if there was R9 carry, we are over 32-bits; exit
+     301/  80 : 59                              STR     R9                       ; otherwise, store the 1st byte of R9,
+ AS V1.42 Beta [Bld 281] - Source File fibonacci.asm - Page 7 - 18/03/25 18:44:43
 
 
-     302/  81 : 09                              LDN     R9                       ; load the 1st byte of R9
-     302/  82 : 74                              ADC                             ; lo(M[R9]) = lo(M[R9]) + lo(M[R8]) + DF
-     302/  83 : E2                              SEX     R2                      ; restore X to point to the stack
-     302/  84 : 33 89                           BDF     fib_l_end               ; if there was R9 carry, we are over 32-bits; exit
-     302/  86 : 59                              STR     R9                       ; otherwise, store the 1st byte of R9
-     303/  87 :                         
-     304/  87 :                         	; If this point is reached, `add_dp` did not detect a 32-bit overflow.
-     305/  87 :                         	; Repeat the Fibonacci sequence calculation loop.
-     306/  87 : 30 47                   	BR	fib_l
-     307/  89 :                         
-     308/  89 :                         	; This point is reached only if `add_dp` has detected the 32-bit overflow.
-     309/  89 :                         fib_l_end:
-     310/  89 :                         	; Print the final message and return to the monitor.
-     311/  89 : F8 C8                   	LDI	lo(final_msg)
-     312/  8B : A7                      	PLO	R7
-     313/  8C : D4                      	SEP	R4
-     314/  8D : 85                      	DB	hi(mon_put_str)
-     315/  8E : 26                      	DB	lo(mon_put_str)
-     316/  8F :                         
-     317/  8F :                         	; ---------------------------------------------------------------------
-     318/  8F :                         	; Exit main function: return the control to the program exit point.
-     319/  8F :                         	; ---------------------------------------------------------------------
-     320/  8F : D0                      	SEP	R0
-     321/  90 :                         
-     322/  90 :                         
-     323/  90 :                         prt_32b_num:
-     324/  90 :                         	; ---------------------------------------------------------------------
-     325/  90 :                         	; Print a 32-bit number located in a buffer on `vars:` page whose
-     326/  90 :                         	; in-page address is passed in as the inline arguments.
-     327/  90 :                         	; R7 is used as a pointer to a string holding a converted number.
-     328/  90 :                         	; RA, RC and RD are scratch-pad registers for a digit conversion.
-     329/  90 :                         	; All registers except D and DF are preserved.
-     330/  90 :                         	; ---------------------------------------------------------------------
-     331/  90 :                         	; Preserve R7, RA, RC, and RD registers.
-     332/  90 : 97                      	GHI	R7			; use as pointer to a string to print
-     333/  91 : 73                      	STXD
-     334/  92 : 87                      	GLO	R7
-     335/  93 : 73                      	STXD
-     336/  94 : 9A                      	GHI	RA			; scratch-pad register for number conversion
-     337/  95 : 73                      	STXD
-     338/  96 : 8A                      	GLO	RA
-     339/  97 : 73                      	STXD
-     340/  98 : 9C                      	GHI	RC			; scratch-pad register for number conversion
-     341/  99 : 73                      	STXD
-     342/  9A : 8C                      	GLO	RC
-     343/  9B : 73                      	STXD
-     344/  9C : 9D                      	GHI	RD			; scratch-pad register for number conversion
-     345/  9D : 73                      	STXD
-     346/  9E : 8D                      	GLO	RD
-     347/  9F : 73                      	STXD
-     348/  A0 :                         
-     349/  A0 :                         	; Copy the value pointed to by the provided immediate address to `tmp_conv`.
-     350/  A0 :                         	; Note: `tmp_conv` is 1 byte longer than the number to print.
-     351/  A0 :                         	; Use RC as the source index and RD as the destination index.
-     352/  A0 : 98                      	GHI	R8			; RA.HI, RC.HI and RD.HI are the same as R8.HI (`vars:` page address)
-     353/  A1 : BA                      	PHI	RA			; initialize the high part of RA - needed later in `dec_digit`
-     354/  A2 : BC                      	PHI	RC			; initialize the high part of RC
-     355/  A3 : BD                      	PHI	RD			; initialize the high part of RD
-     356/  A4 : 46                      	LDA	R6			; load the immediate argument
-     357/  A5 : AC                      	PLO	RC			; put it in the low part of RC to make RC point to the source buffer
- AS V1.42 Beta [Bld 281] - Source File fibonacci.asm - Page 8 - 17/03/25 16:43:13
+     301/  81 :                                 ; the pointer to R9 is on the 1st byte of R9
+     301/  81 :                                 ; the pointer to R8 is on the 1st byte of R8
+     302/  81 :                         
+     303/  81 :                         	; If this point is reached, `add_dp` did not detect a 32-bit overflow.
+     304/  81 :                         	; Repeat the Fibonacci sequence calculation loop.
+     305/  81 : 30 47                   	BR	fib_l
+     306/  83 :                         
+     307/  83 :                         	; This point is reached only if `add_dp` has detected the 32-bit overflow.
+     308/  83 :                         fib_l_end:
+     309/  83 :                         	; Print the final message and return to the monitor.
+     310/  83 : F8 C8                   	LDI	lo(final_msg)
+     311/  85 : A7                      	PLO	R7
+     312/  86 : D4                      	SEP	R4
+     313/  87 : 85                      	DB	hi(mon_put_str)
+     314/  88 : 26                      	DB	lo(mon_put_str)
+     315/  89 :                         
+     316/  89 :                         	; ---------------------------------------------------------------------
+     317/  89 :                         	; Exit main function: return the control to the program exit point.
+     318/  89 :                         	; ---------------------------------------------------------------------
+     319/  89 : D0                      	SEP	R0
+     320/  8A :                         
+     321/  8A :                         
+     322/  8A :                         prt_32b_num:
+     323/  8A :                         	; ---------------------------------------------------------------------
+     324/  8A :                         	; Print a 32-bit number located in a buffer on `vars:` page whose
+     325/  8A :                         	; in-page address is passed in as the inline arguments.
+     326/  8A :                         	; R7 is used as a pointer to a string holding a converted number.
+     327/  8A :                         	; RA, RC and RD are scratch-pad registers for a digit conversion.
+     328/  8A :                         	; All registers except D and DF are preserved.
+     329/  8A :                         	; ---------------------------------------------------------------------
+     330/  8A :                         	; Preserve R7, RA, RC, and RD registers.
+     331/  8A : 97                      	GHI	R7			; use as pointer to a string to print
+     332/  8B : 73                      	STXD
+     333/  8C : 87                      	GLO	R7
+     334/  8D : 73                      	STXD
+     335/  8E : 9A                      	GHI	RA			; scratch-pad register for number conversion
+     336/  8F : 73                      	STXD
+     337/  90 : 8A                      	GLO	RA
+     338/  91 : 73                      	STXD
+     339/  92 : 9C                      	GHI	RC			; scratch-pad register for number conversion
+     340/  93 : 73                      	STXD
+     341/  94 : 8C                      	GLO	RC
+     342/  95 : 73                      	STXD
+     343/  96 : 9D                      	GHI	RD			; scratch-pad register for number conversion
+     344/  97 : 73                      	STXD
+     345/  98 : 8D                      	GLO	RD
+     346/  99 : 73                      	STXD
+     347/  9A :                         
+     348/  9A :                         	; Copy the value pointed to by the provided immediate address to `tmp_conv`.
+     349/  9A :                         	; Note: `tmp_conv` is 1 byte longer than the number to print.
+     350/  9A :                         	; Use RC as the source index and RD as the destination index.
+     351/  9A : 98                      	GHI	R8			; RA.HI, RC.HI and RD.HI are the same as R8.HI (`vars:` page address)
+     352/  9B : BA                      	PHI	RA			; initialize the high part of RA - needed later in `dec_digit`
+     353/  9C : BC                      	PHI	RC			; initialize the high part of RC
+     354/  9D : BD                      	PHI	RD			; initialize the high part of RD
+     355/  9E : 46                      	LDA	R6			; load the immediate argument
+     356/  9F : AC                      	PLO	RC			; put it in the low part of RC to make RC point to the source buffer
+     357/  A0 : F8 88                   	LDI	lo(tmp_conv)		; load the low part of `tmp_conv` address
+     358/  A2 : AD                      	PLO	RD			; put it in the low part of RD to make RD point to the destination buffer
+     359/  A3 : F8 00                   	LDI	0			; set 0 to the first byte of `tmp_conv`
+ AS V1.42 Beta [Bld 281] - Source File fibonacci.asm - Page 8 - 18/03/25 18:44:43
 
 
-     358/  A6 : F8 88                   	LDI	lo(tmp_conv)		; load the low part of `tmp_conv` address
-     359/  A8 : AD                      	PLO	RD			; put it in the low part of RD to make RD point to the destination buffer
-     360/  A9 : F8 00                   	LDI	0			; set 0 to the first byte of `tmp_conv`
-     361/  AB : 5D                      	STR	RD
-     362/  AC : 1D                      	INC	RD			; increase RD to point to the 2nd byte of `tmp_conv`
-     363/  AD : 4C                      	LDA	RC			; copy the 1st byte of the value pointed by RC to the location pointed by RD
-     364/  AE : 5D                      	STR	RD
-     365/  AF : 1D                      	INC	RD			; increase RD to point to the 3rd byte of `tmp_conv`
-     366/  B0 : 4C                      	LDA	RC			; copy the 2nd byte of the value pointed by RC to the location pointed by RD
-     367/  B1 : 5D                      	STR	RD
-     368/  B2 : 1D                      	INC	RD			; increase RD to point to the 4th byte of `tmp_conv`
-     369/  B3 : 4C                      	LDA	RC			; copy the 3rd byte of the value pointed by RC to the location pointed by RD
-     370/  B4 : 5D                      	STR	RD
-     371/  B5 : 1D                      	INC	RD			; increase RD to point to the 5th byte of `tmp_conv`
-     372/  B6 : 0C                      	LDN	RC			; copy the 4th byte of the value pointed by RC to the location pointed by RD
-     373/  B7 : 5D                      	STR	RD
-     374/  B8 :                         
-     375/  B8 :                         	; Initialize the string buffer where the decimal conversion result will be written
-     376/  B8 :                         	; to the default result as if the conversion input was 0.
-     377/  B8 : F8 99                   	LDI	lo(prt_buf_end-1)	; the low part points to the end of the print buffer
-     378/  BA : AC                      	PLO	RC
-     379/  BB : EC                      	SEX	RC			; temporary set RC to act as the index register
-     380/  BC : F8 00                   	LDI	0			; the trailing '\0'
-     381/  BE : 73                      	STXD
-     382/  BF : F8 30                   	LDI	'0'			; the corner case for 0, to be overwritten if the input number is not 0
-     383/  C1 : 73                      	STXD
-     384/  C2 : F8 20                   	LDI	0x20			; fill the rest of the buffer with ' '
-     385/  C4 :                         	REPT	10			; an inline macro that repeats commands till ENDM 10 times
-     386/  C4 :                         	STXD
-     387/  C4 :                         	ENDM
-     386/  C4 : 73                      	STXD
-     386/  C5 : 73                      	STXD
-     386/  C6 : 73                      	STXD
-     386/  C7 : 73                      	STXD
-     386/  C8 : 73                      	STXD
-     386/  C9 : 73                      	STXD
-     386/  CA : 73                      	STXD
-     386/  CB : 73                      	STXD
-     386/  CC : 73                      	STXD
-     386/  CD : 73                      	STXD
-     388/  CE : E2                      	SEX	R2			; restore the default index register
-     389/  CF :                         
-     390/  CF :                         	; Let RC point to the last position of `prt_buf`.
-     391/  CF : F8 99                   	LDI	lo(prt_buf_end-1)
-     392/  D1 : AC                      	PLO	RC
-     393/  D2 :                         
-     394/  D2 :                         	; Convert the 32-bit unsigned value pointed by RA to a decimal string.
-     395/  D2 :                         	; We have at most 10 decimal digits, repeat digit conversion 10 times starting from the rightmost position.
-     396/  D2 :                         	REPT	10			; an inline macro that repeats commands till ENDM 10 times
-     397/  D2 :                         	SEP	R4			; convert a single digit
-     398/  D2 :                         	DB	hi(dec_digit)
-     399/  D2 :                         	DB	lo(dec_digit)
-     400/  D2 :                         	ENDM
-     397/  D2 : D4                      	SEP	R4			; convert a single digit
-     398/  D3 : 01                      	DB	hi(dec_digit)
-     399/  D4 : 0B                      	DB	lo(dec_digit)
-     397/  D5 : D4                      	SEP	R4			; convert a single digit
-     398/  D6 : 01                      	DB	hi(dec_digit)
-     399/  D7 : 0B                      	DB	lo(dec_digit)
-     397/  D8 : D4                      	SEP	R4			; convert a single digit
- AS V1.42 Beta [Bld 281] - Source File fibonacci.asm - Page 9 - 17/03/25 16:43:13
+     360/  A5 : 5D                      	STR	RD
+     361/  A6 : 1D                      	INC	RD			; increase RD to point to the 2nd byte of `tmp_conv`
+     362/  A7 : 4C                      	LDA	RC			; copy the 1st byte of the value pointed by RC to the location pointed by RD
+     363/  A8 : 5D                      	STR	RD
+     364/  A9 : 1D                      	INC	RD			; increase RD to point to the 3rd byte of `tmp_conv`
+     365/  AA : 4C                      	LDA	RC			; copy the 2nd byte of the value pointed by RC to the location pointed by RD
+     366/  AB : 5D                      	STR	RD
+     367/  AC : 1D                      	INC	RD			; increase RD to point to the 4th byte of `tmp_conv`
+     368/  AD : 4C                      	LDA	RC			; copy the 3rd byte of the value pointed by RC to the location pointed by RD
+     369/  AE : 5D                      	STR	RD
+     370/  AF : 1D                      	INC	RD			; increase RD to point to the 5th byte of `tmp_conv`
+     371/  B0 : 0C                      	LDN	RC			; copy the 4th byte of the value pointed by RC to the location pointed by RD
+     372/  B1 : 5D                      	STR	RD
+     373/  B2 :                         
+     374/  B2 :                         	; Initialize the string buffer where the decimal conversion result will be written
+     375/  B2 :                         	; to the default result as if the conversion input was 0.
+     376/  B2 : F8 99                   	LDI	lo(prt_buf_end-1)	; the low part points to the end of the print buffer
+     377/  B4 : AC                      	PLO	RC
+     378/  B5 : EC                      	SEX	RC			; temporary set RC to act as the index register
+     379/  B6 : F8 00                   	LDI	0			; the trailing '\0'
+     380/  B8 : 73                      	STXD
+     381/  B9 : F8 30                   	LDI	'0'			; the corner case for 0, to be overwritten if the input number is not 0
+     382/  BB : 73                      	STXD
+     383/  BC : F8 20                   	LDI	0x20			; fill the rest of the buffer with ' '
+     384/  BE :                         	REPT	10			; an inline macro that repeats commands till ENDM 10 times
+     385/  BE :                         	STXD
+     386/  BE :                         	ENDM
+     385/  BE : 73                      	STXD
+     385/  BF : 73                      	STXD
+     385/  C0 : 73                      	STXD
+     385/  C1 : 73                      	STXD
+     385/  C2 : 73                      	STXD
+     385/  C3 : 73                      	STXD
+     385/  C4 : 73                      	STXD
+     385/  C5 : 73                      	STXD
+     385/  C6 : 73                      	STXD
+     385/  C7 : 73                      	STXD
+     387/  C8 : E2                      	SEX	R2			; restore the default index register
+     388/  C9 :                         
+     389/  C9 :                         	; Let RC point to the last position of `prt_buf`.
+     390/  C9 : F8 99                   	LDI	lo(prt_buf_end-1)
+     391/  CB : AC                      	PLO	RC
+     392/  CC :                         
+     393/  CC :                         	; Convert the 32-bit unsigned value pointed by RA to a decimal string.
+     394/  CC :                         	; We have at most 10 decimal digits, repeat digit conversion 10 times starting from the rightmost position.
+     395/  CC :                         	REPT	10			; an inline macro that repeats commands till ENDM 10 times
+     396/  CC :                         	SEP	R4			; convert a single digit
+     397/  CC :                         	DB	hi(dec_digit)
+     398/  CC :                         	DB	lo(dec_digit)
+     399/  CC :                         	ENDM
+     396/  CC : D4                      	SEP	R4			; convert a single digit
+     397/  CD : 01                      	DB	hi(dec_digit)
+     398/  CE : 05                      	DB	lo(dec_digit)
+     396/  CF : D4                      	SEP	R4			; convert a single digit
+     397/  D0 : 01                      	DB	hi(dec_digit)
+     398/  D1 : 05                      	DB	lo(dec_digit)
+     396/  D2 : D4                      	SEP	R4			; convert a single digit
+     397/  D3 : 01                      	DB	hi(dec_digit)
+     398/  D4 : 05                      	DB	lo(dec_digit)
+     396/  D5 : D4                      	SEP	R4			; convert a single digit
+ AS V1.42 Beta [Bld 281] - Source File fibonacci.asm - Page 9 - 18/03/25 18:44:43
 
 
-     398/  D9 : 01                      	DB	hi(dec_digit)
-     399/  DA : 0B                      	DB	lo(dec_digit)
-     397/  DB : D4                      	SEP	R4			; convert a single digit
-     398/  DC : 01                      	DB	hi(dec_digit)
-     399/  DD : 0B                      	DB	lo(dec_digit)
-     397/  DE : D4                      	SEP	R4			; convert a single digit
-     398/  DF : 01                      	DB	hi(dec_digit)
-     399/  E0 : 0B                      	DB	lo(dec_digit)
-     397/  E1 : D4                      	SEP	R4			; convert a single digit
-     398/  E2 : 01                      	DB	hi(dec_digit)
-     399/  E3 : 0B                      	DB	lo(dec_digit)
-     397/  E4 : D4                      	SEP	R4			; convert a single digit
-     398/  E5 : 01                      	DB	hi(dec_digit)
-     399/  E6 : 0B                      	DB	lo(dec_digit)
-     397/  E7 : D4                      	SEP	R4			; convert a single digit
-     398/  E8 : 01                      	DB	hi(dec_digit)
-     399/  E9 : 0B                      	DB	lo(dec_digit)
-     397/  EA : D4                      	SEP	R4			; convert a single digit
-     398/  EB : 01                      	DB	hi(dec_digit)
-     399/  EC : 0B                      	DB	lo(dec_digit)
-     397/  ED : D4                      	SEP	R4			; convert a single digit
-     398/  EE : 01                      	DB	hi(dec_digit)
-     399/  EF : 0B                      	DB	lo(dec_digit)
-     401/  F0 :                         
-     402/  F0 :                         	; print the string holding the conversion result, R7 is a pointer to null-terminated string
-     403/  F0 : F8 8E                   	LDI	lo(prt_buf)
-     404/  F2 : A7                      	PLO	R7
-     405/  F3 : D4                      	SEP	R4
-     406/  F4 : 85                      	DB	hi(mon_put_str)
-     407/  F5 : 26                      	DB	lo(mon_put_str)
-     408/  F6 :                         
-     409/  F6 :                         	; print <CR><LF>
-     410/  F6 : D4                      	SEP	R4
-     411/  F7 : 85                      	DB	hi(mon_crlf)
-     412/  F8 : 19                      	DB	lo(mon_crlf)
-     413/  F9 :                         
-     414/  F9 :                         	; restore R7,RA,RC,RD register
-     415/  F9 : 60                      	IRX
-     416/  FA : 72                      	LDXA				; restore RD
-     417/  FB : AD                      	PLO	RD
-     418/  FC : 72                      	LDXA
-     419/  FD : BD                      	PHI	RD
-     420/  FE : 72                      	LDXA				; restore RC
-     421/  FF : AC                      	PLO	RC
-     422/ 100 : 72                      	LDXA
-     423/ 101 : BC                      	PHI	RC
-     424/ 102 : 72                      	LDXA				; restore RA
-     425/ 103 : AA                      	PLO	RA
-     426/ 104 : 72                      	LDXA
-     427/ 105 : BA                      	PHI	RA
-     428/ 106 : 72                      	LDXA				; restore R7
-     429/ 107 : A7                      	PLO	R7
-     430/ 108 : F0                      	LDX
-     431/ 109 : B7                      	PHI	R7
-     432/ 10A :                         	; return
-     433/ 10A : D5                      	SEP	R5
-     434/ 10B :                         
-     435/ 10B :                         
-     436/ 10B :                         dec_digit:
-     437/ 10B :                         	; ---------------------------------------------------------------------
- AS V1.42 Beta [Bld 281] - Source File fibonacci.asm - Page 10 - 17/03/25 16:43:13
+     397/  D6 : 01                      	DB	hi(dec_digit)
+     398/  D7 : 05                      	DB	lo(dec_digit)
+     396/  D8 : D4                      	SEP	R4			; convert a single digit
+     397/  D9 : 01                      	DB	hi(dec_digit)
+     398/  DA : 05                      	DB	lo(dec_digit)
+     396/  DB : D4                      	SEP	R4			; convert a single digit
+     397/  DC : 01                      	DB	hi(dec_digit)
+     398/  DD : 05                      	DB	lo(dec_digit)
+     396/  DE : D4                      	SEP	R4			; convert a single digit
+     397/  DF : 01                      	DB	hi(dec_digit)
+     398/  E0 : 05                      	DB	lo(dec_digit)
+     396/  E1 : D4                      	SEP	R4			; convert a single digit
+     397/  E2 : 01                      	DB	hi(dec_digit)
+     398/  E3 : 05                      	DB	lo(dec_digit)
+     396/  E4 : D4                      	SEP	R4			; convert a single digit
+     397/  E5 : 01                      	DB	hi(dec_digit)
+     398/  E6 : 05                      	DB	lo(dec_digit)
+     396/  E7 : D4                      	SEP	R4			; convert a single digit
+     397/  E8 : 01                      	DB	hi(dec_digit)
+     398/  E9 : 05                      	DB	lo(dec_digit)
+     400/  EA :                         
+     401/  EA :                         	; print the string holding the conversion result, R7 is a pointer to null-terminated string
+     402/  EA : F8 8E                   	LDI	lo(prt_buf)
+     403/  EC : A7                      	PLO	R7
+     404/  ED : D4                      	SEP	R4
+     405/  EE : 85                      	DB	hi(mon_put_str)
+     406/  EF : 26                      	DB	lo(mon_put_str)
+     407/  F0 :                         
+     408/  F0 :                         	; print <CR><LF>
+     409/  F0 : D4                      	SEP	R4
+     410/  F1 : 85                      	DB	hi(mon_crlf)
+     411/  F2 : 19                      	DB	lo(mon_crlf)
+     412/  F3 :                         
+     413/  F3 :                         	; restore R7,RA,RC,RD register
+     414/  F3 : 60                      	IRX
+     415/  F4 : 72                      	LDXA				; restore RD
+     416/  F5 : AD                      	PLO	RD
+     417/  F6 : 72                      	LDXA
+     418/  F7 : BD                      	PHI	RD
+     419/  F8 : 72                      	LDXA				; restore RC
+     420/  F9 : AC                      	PLO	RC
+     421/  FA : 72                      	LDXA
+     422/  FB : BC                      	PHI	RC
+     423/  FC : 72                      	LDXA				; restore RA
+     424/  FD : AA                      	PLO	RA
+     425/  FE : 72                      	LDXA
+     426/  FF : BA                      	PHI	RA
+     427/ 100 : 72                      	LDXA				; restore R7
+     428/ 101 : A7                      	PLO	R7
+     429/ 102 : F0                      	LDX
+     430/ 103 : B7                      	PHI	R7
+     431/ 104 :                         	; return
+     432/ 104 : D5                      	SEP	R5
+     433/ 105 :                         
+     434/ 105 :                         
+     435/ 105 :                         dec_digit:
+     436/ 105 :                         	; ---------------------------------------------------------------------
+     437/ 105 :                         	; This function converts the single decimal digit by dividing the number
+     438/ 105 :                         	; in `tmp_conv` by the number in `radix` and writes the result
+     439/ 105 :                         	; to the correct position in `prt_buf`. It is intended to be called
+ AS V1.42 Beta [Bld 281] - Source File fibonacci.asm - Page 10 - 18/03/25 18:44:43
 
 
-     438/ 10B :                         	; This function converts the single decimal digit by dividing the number
-     439/ 10B :                         	; in `tmp_conv` by the number in `radix` and writes the result
-     440/ 10B :                         	; to the correct position in `prt_buf`. It is intended to be called
-     441/ 10B :                         	; as many times as necessary to convert the whole number.
-     442/ 10B :                         	; `tmp_conv` is 5 bytes long, the 1st byte is 0 on input, while the 2nd, 3rd,
-     443/ 10B :                         	; 4th and the 5th byte hold the number to be converted.
-     444/ 10B :                         	; As per RCA 1802 convention, the big-endian notation is used.
-     445/ 10B :                         	; If the number in `tmp_conv` is 0, the function returns immediately;
-     446/ 10B :                                 ; otherwise, it divides that number by a radix value.
-     447/ 10B :                         	; The division is performed in place, the result replaces the dividend,
-     448/ 10B :                         	; and the remainder is held in the 1st byte of the `tmp_conv` buffer.
-     449/ 10B :                         	; The remainder is converted to a character and written in the memory
-     450/ 10B :                         	; location pointed out by RC.
-     451/ 10B :                         	; The result of division is intended to be used as the input for the
-     452/ 10B :                         	; next digit conversion.
-     453/ 10B :                         	; The RA register manipulates the content of the `tmp_conv` buffer.
-     454/ 10B :                         	; The RD register points to a radix (divisor).
-     455/ 10B :                         	; A callee sets the high parts of all registers. This function does not
-     456/ 10B :                         	; change them.
-     457/ 10B :                         	; ---------------------------------------------------------------------
-     458/ 10B : F8 8D                   	LDI	lo(radix)		; let RD point to `radix`
-     459/ 10D : AD                      	PLO	RD
-     460/ 10E : F8 89                   	LDI	lo(tmp_conv+1)		; let RA point to the first byte of the dividend
-     461/ 110 : AA                      	PLO	RA
-     462/ 111 :                         
-     463/ 111 :                         	; If the dividend is zero, return without performing any conversion.
-     464/ 111 :                         	; Note: the dividend is stored in the 2nd, 3rd, 4th and 5th position of the `tmp_conv` buffer.
-     465/ 111 : 4A                      	LDA	RA			; load the 2nd byte in the buffer
-     466/ 112 : 3A 1E                   	BNZ	dec_conv		; the 2nd byte is not zero, perform the conversion
-     467/ 114 : 4A                      	LDA	RA			; load the 3rd byte
-     468/ 115 : 3A 1E                   	BNZ	dec_conv		; the 3rd byte is not zero, perform the conversion
-     469/ 117 : 4A                      	LDA	RA			; load the 4th byte
-     470/ 118 : 3A 1E                   	BNZ	dec_conv		; the 4th byte is not zero, perform the conversion
-     471/ 11A : 0A                      	LDN	RA			; load the 5th byte
-     472/ 11B : 3A 1E                   	BNZ	dec_conv		; the 5th byte is not zero, perform the conversion
-     473/ 11D : D5                      	SEP	R5			; all tested bytes were zero; return immediately.
-     474/ 11E :                         
-     475/ 11E :                         dec_conv:
-     476/ 11E :                         	; Move the `prt_buf` index to where the current conversion result character will be stored.
-     477/ 11E : 2C                      	DEC	RC
-     478/ 11F :                         
-     479/ 11F :                         	; Make RA point to the last byte of `tmp_conv`. It assumes the high part of RA has already been initialized.
-     480/ 11F : F8 8C                   	LDI	lo(tmp_conv+4)
-     481/ 121 : AA                      	PLO	RA
-     482/ 122 :                         
-     483/ 122 :                         	; The loop divides a 32-bit value with an 8-bit value. Each loop iteration calculates 1 bit of the result.
-     484/ 122 :                         	; The remainder is in the first byte. The following 4 bytes hold the division result.
-     485/ 122 : F8 20                   	LDI	32			; 32 iterations
-     486/ 124 :                         dec_digit_loop:
-     487/ 124 :                         	; Shift left 5 bytes buffer content, and if the value in the 1st byte is greater or equal to radix,
-     488/ 124 :                         	; add 1 to the last byte.
-     489/ 124 : 73                      	STXD				; preserve the loop counter onto the stack
-     490/ 125 :                         
-     491/ 125 :                         	; Shift-left the 5th byte in `tmp_conv`, putting 0 to the lsb position.
-     492/ 125 : 0A                      	LDN	RA			; note that RA points to the last byte within the buffer
-     493/ 126 : FE                      	SHL
-     494/ 127 : 5A                      	STR	RA
-     495/ 128 : 2A                      	DEC	RA
-     496/ 129 :                         
-     497/ 129 :                         	; Shift-left the 4th byte in `tmp_conv`, filling the lsb position from the DF.
- AS V1.42 Beta [Bld 281] - Source File fibonacci.asm - Page 11 - 17/03/25 16:43:13
+     440/ 105 :                         	; as many times as necessary to convert the whole number.
+     441/ 105 :                         	; `tmp_conv` is 5 bytes long, the 1st byte is 0 on input, while the 2nd, 3rd,
+     442/ 105 :                         	; 4th and the 5th byte hold the number to be converted.
+     443/ 105 :                         	; As per RCA 1802 convention, the big-endian notation is used.
+     444/ 105 :                         	; If the number in `tmp_conv` is 0, the function returns immediately;
+     445/ 105 :                                 ; otherwise, it divides that number by a radix value.
+     446/ 105 :                         	; The division is performed in place, the result replaces the dividend,
+     447/ 105 :                         	; and the remainder is held in the 1st byte of the `tmp_conv` buffer.
+     448/ 105 :                         	; The remainder is converted to a character and written in the memory
+     449/ 105 :                         	; location pointed out by RC.
+     450/ 105 :                         	; The result of division is intended to be used as the input for the
+     451/ 105 :                         	; next digit conversion.
+     452/ 105 :                         	; The RA register manipulates the content of the `tmp_conv` buffer.
+     453/ 105 :                         	; The RD register points to a radix (divisor).
+     454/ 105 :                         	; A callee sets the high parts of all registers. This function does not
+     455/ 105 :                         	; change them.
+     456/ 105 :                         	; ---------------------------------------------------------------------
+     457/ 105 : F8 8D                   	LDI	lo(radix)		; let RD point to `radix`
+     458/ 107 : AD                      	PLO	RD
+     459/ 108 : F8 89                   	LDI	lo(tmp_conv+1)		; let RA point to the first byte of the dividend
+     460/ 10A : AA                      	PLO	RA
+     461/ 10B :                         
+     462/ 10B :                         	; If the dividend is zero, return without performing any conversion.
+     463/ 10B :                         	; Note: the dividend is stored in the 2nd, 3rd, 4th and 5th position of the `tmp_conv` buffer.
+     464/ 10B : 4A                      	LDA	RA			; load the 2nd byte in the buffer
+     465/ 10C : 3A 18                   	BNZ	dec_conv		; the 2nd byte is not zero, perform the conversion
+     466/ 10E : 4A                      	LDA	RA			; load the 3rd byte
+     467/ 10F : 3A 18                   	BNZ	dec_conv		; the 3rd byte is not zero, perform the conversion
+     468/ 111 : 4A                      	LDA	RA			; load the 4th byte
+     469/ 112 : 3A 18                   	BNZ	dec_conv		; the 4th byte is not zero, perform the conversion
+     470/ 114 : 0A                      	LDN	RA			; load the 5th byte
+     471/ 115 : 3A 18                   	BNZ	dec_conv		; the 5th byte is not zero, perform the conversion
+     472/ 117 : D5                      	SEP	R5			; all tested bytes were zero; return immediately.
+     473/ 118 :                         
+     474/ 118 :                         dec_conv:
+     475/ 118 :                         	; Move the `prt_buf` index to where the current conversion result character will be stored.
+     476/ 118 : 2C                      	DEC	RC
+     477/ 119 :                         
+     478/ 119 :                         	; Make RA point to the last byte of `tmp_conv`. It assumes the high part of RA has already been initialized.
+     479/ 119 : F8 8C                   	LDI	lo(tmp_conv+4)
+     480/ 11B : AA                      	PLO	RA
+     481/ 11C :                         
+     482/ 11C :                         	; The loop divides a 32-bit value with an 8-bit value. Each loop iteration calculates 1 bit of the result.
+     483/ 11C :                         	; The remainder is in the first byte. The following 4 bytes hold the division result.
+     484/ 11C : F8 20                   	LDI	32			; 32 iterations
+     485/ 11E :                         dec_digit_loop:
+     486/ 11E :                         	; Shift left 5 bytes buffer content, and if the value in the 1st byte is greater or equal to radix,
+     487/ 11E :                         	; add 1 to the last byte.
+     488/ 11E : 73                      	STXD				; preserve the loop counter onto the stack
+     489/ 11F :                         
+     490/ 11F :                         	; Shift-left the 5th byte in `tmp_conv`, putting 0 to the lsb position.
+     491/ 11F : 0A                      	LDN	RA			; note that RA points to the last byte within the buffer
+     492/ 120 : FE                      	SHL
+     493/ 121 : 5A                      	STR	RA
+     494/ 122 : 2A                      	DEC	RA
+     495/ 123 :                         
+     496/ 123 :                         	; Shift-left the 4th byte in `tmp_conv`, filling the lsb position from the DF.
+     497/ 123 : 0A                      	LDN	RA
+     498/ 124 : 7E                      	SHLC
+     499/ 125 : 5A                      	STR	RA
+ AS V1.42 Beta [Bld 281] - Source File fibonacci.asm - Page 11 - 18/03/25 18:44:43
 
 
-     498/ 129 : 0A                      	LDN	RA
-     499/ 12A : 7E                      	SHLC
-     500/ 12B : 5A                      	STR	RA
-     501/ 12C : 2A                      	DEC	RA
-     502/ 12D :                         
-     503/ 12D :                         	; Shift-left the 3rd byte in `tmp_conv`, filling the lsb position from the DF.
-     504/ 12D : 0A                      	LDN	RA
-     505/ 12E : 7E                      	SHLC
-     506/ 12F : 5A                      	STR	RA
-     507/ 130 : 2A                      	DEC	RA
-     508/ 131 :                         
-     509/ 131 :                         	; Shift-left the 2nd byte in `tmp_conv`, filling the lsb position from the DF.
-     510/ 131 : 0A                      	LDN	RA
-     511/ 132 : 7E                      	SHLC
-     512/ 133 : 5A                      	STR	RA
-     513/ 134 : 2A                      	DEC	RA
-     514/ 135 :                         
-     515/ 135 :                         	; Shift-left the 1st byte in `tmp_conv`, filling the lsb position from the DF.
-     516/ 135 : 0A                      	LDN	RA
-     517/ 136 : 7E                      	SHLC
-     518/ 137 : 5A                      	STR	RA
-     519/ 138 :                         
-     520/ 138 :                         	; D holds the 1st byte of `tmp_conv` that we want to compare with the radix.
-     521/ 138 : ED                      	SEX	RD			; point to radix
-     522/ 139 : F7                      	SM				; if the prefix is greater or equal to the radix, the result is non-negative
-     523/ 13A : E2                      	SEX	R2			; restore the default index register
-     524/ 13B : 3B 47                   	BM	dec_prefix_less		; if the prefix is less than radix, skip subtraction
-     525/ 13D :                         
-     526/ 13D :                         	; The prefix in the 1st byte of `tmp_conv` was greater or equal to `radix`.
-     527/ 13D :                         	; Store the result of the subtraction in the 1st byte of `tmp_conv` and add 1 to the last byte of the
-     528/ 13D :                         	; intermediate result. As the last bit of the last byte of `tmp_conv` was zero after the previous shifting,
-     529/ 13D :                         	; adding 1 cannot cause the overflow.
-     530/ 13D : 5A                      	STR	RA			; store the subtraction result in the 1st byte of `tmp_conv`
-     531/ 13E : F8 8C                   	LDI	lo(tmp_conv+4)		; point to the last byte of `tmp_conv`
-     532/ 140 : AA                      	PLO	RA
-     533/ 141 : 0A                      	LDN	RA			; add 1 to the last byte of `tmp_conv`
-     534/ 142 : FC 01                   	ADI	1
-     535/ 144 : 5A                      	STR	RA			; store the updated last byte of `tmp_conv`
-     536/ 145 : 30 4A                   	BR	dec_test_if_done	; go to loop counter checking
-     537/ 147 :                         
-     538/ 147 :                         dec_prefix_less:
-     539/ 147 :                         	; Let RA point to the last part of `tmp_conv`.
-     540/ 147 : F8 8C                   	LDI	lo(tmp_conv+4)
-     541/ 149 : AA                      	PLO	RA
-     542/ 14A :                         
-     543/ 14A :                         dec_test_if_done
-     544/ 14A :                         	; Test if all 32-bits of the division have been calculated
-     545/ 14A : 60                      	IRX				; restore the loop counter from the stack
-     546/ 14B : F0                      	LDX
-     547/ 14C : FF 01                   	SMI	1			; decrease the loop counter
-     548/ 14E : 3A 24                   	BNZ	dec_digit_loop		; if the counter is greater than zero, do another loop
-     549/ 150 :                         
-     550/ 150 :                         	; The division is completed; the remainder is in the 1st byte of the `tmp_conv` buffer.
-     551/ 150 :                         	; Convert it to a character and store it in the correct position within the `prt_buf`.
-     552/ 150 : F8 88                   	LDI	lo(tmp_conv)		; restore the RA to the beginning of `tmp_conv`
-     553/ 152 : AA                      	PLO	RA
-     554/ 153 : 0A                      	LDN	RA			; load the remainder byte
-     555/ 154 : FC 30                   	ADI	'0'			; make it a character
-     556/ 156 : 5C                      	STR	RC			; store it into the current position within `str_buf`
-     557/ 157 : F8 00                   	LDI	0			; clear the first byte of `tmp_conv` for the next iteration
- AS V1.42 Beta [Bld 281] - Source File fibonacci.asm - Page 12 - 17/03/25 16:43:13
+     500/ 126 : 2A                      	DEC	RA
+     501/ 127 :                         
+     502/ 127 :                         	; Shift-left the 3rd byte in `tmp_conv`, filling the lsb position from the DF.
+     503/ 127 : 0A                      	LDN	RA
+     504/ 128 : 7E                      	SHLC
+     505/ 129 : 5A                      	STR	RA
+     506/ 12A : 2A                      	DEC	RA
+     507/ 12B :                         
+     508/ 12B :                         	; Shift-left the 2nd byte in `tmp_conv`, filling the lsb position from the DF.
+     509/ 12B : 0A                      	LDN	RA
+     510/ 12C : 7E                      	SHLC
+     511/ 12D : 5A                      	STR	RA
+     512/ 12E : 2A                      	DEC	RA
+     513/ 12F :                         
+     514/ 12F :                         	; Shift-left the 1st byte in `tmp_conv`, filling the lsb position from the DF.
+     515/ 12F : 0A                      	LDN	RA
+     516/ 130 : 7E                      	SHLC
+     517/ 131 : 5A                      	STR	RA
+     518/ 132 :                         
+     519/ 132 :                         	; D holds the 1st byte of `tmp_conv` that we want to compare with the radix.
+     520/ 132 : ED                      	SEX	RD			; point to radix
+     521/ 133 : F7                      	SM				; if the prefix is greater or equal to the radix, the result is non-negative
+     522/ 134 : E2                      	SEX	R2			; restore the default index register
+     523/ 135 : 3B 41                   	BM	dec_prefix_less		; if the prefix is less than radix, skip subtraction
+     524/ 137 :                         
+     525/ 137 :                         	; The prefix in the 1st byte of `tmp_conv` was greater or equal to `radix`.
+     526/ 137 :                         	; Store the result of the subtraction in the 1st byte of `tmp_conv` and add 1 to the last byte of the
+     527/ 137 :                         	; intermediate result. As the last bit of the last byte of `tmp_conv` was zero after the previous shifting,
+     528/ 137 :                         	; adding 1 cannot cause the overflow.
+     529/ 137 : 5A                      	STR	RA			; store the subtraction result in the 1st byte of `tmp_conv`
+     530/ 138 : F8 8C                   	LDI	lo(tmp_conv+4)		; point to the last byte of `tmp_conv`
+     531/ 13A : AA                      	PLO	RA
+     532/ 13B : 0A                      	LDN	RA			; add 1 to the last byte of `tmp_conv`
+     533/ 13C : FC 01                   	ADI	1
+     534/ 13E : 5A                      	STR	RA			; store the updated last byte of `tmp_conv`
+     535/ 13F : 30 44                   	BR	dec_test_if_done	; go to loop counter checking
+     536/ 141 :                         
+     537/ 141 :                         dec_prefix_less:
+     538/ 141 :                         	; Let RA point to the last part of `tmp_conv`.
+     539/ 141 : F8 8C                   	LDI	lo(tmp_conv+4)
+     540/ 143 : AA                      	PLO	RA
+     541/ 144 :                         
+     542/ 144 :                         dec_test_if_done
+     543/ 144 :                         	; Test if all 32-bits of the division have been calculated
+     544/ 144 : 60                      	IRX				; restore the loop counter from the stack
+     545/ 145 : F0                      	LDX
+     546/ 146 : FF 01                   	SMI	1			; decrease the loop counter
+     547/ 148 : 3A 1E                   	BNZ	dec_digit_loop		; if the counter is greater than zero, do another loop
+     548/ 14A :                         
+     549/ 14A :                         	; The division is completed; the remainder is in the 1st byte of the `tmp_conv` buffer.
+     550/ 14A :                         	; Convert it to a character and store it in the correct position within the `prt_buf`.
+     551/ 14A : F8 88                   	LDI	lo(tmp_conv)		; restore the RA to the beginning of `tmp_conv`
+     552/ 14C : AA                      	PLO	RA
+     553/ 14D : 0A                      	LDN	RA			; load the remainder byte
+     554/ 14E : FC 30                   	ADI	'0'			; make it a character
+     555/ 150 : 5C                      	STR	RC			; store it into the current position within `str_buf`
+     556/ 151 : F8 00                   	LDI	0			; clear the first byte of `tmp_conv` for the next iteration
+     557/ 153 : 5A                      	STR	RA
+     558/ 154 :                         	; return
+     559/ 154 : D5                      	SEP	R5
+ AS V1.42 Beta [Bld 281] - Source File fibonacci.asm - Page 12 - 18/03/25 18:44:43
 
 
-     558/ 159 : 5A                      	STR	RA
-     559/ 15A :                         	; return
-     560/ 15A : D5                      	SEP	R5
-     561/ 15B :                         
-     562/ 15B :                         
-     563/ 15B :                         ; -----------------------------------------------------------------------------
-     564/ 15B :                         ; Variables reside in the space from 0x0180 to 0x01FF.
-     565/ 15B :                         ; The 32-bit values are stored using the big-endian notation.
-     566/ 15B :                         ; -----------------------------------------------------------------------------
-     567/ 180 :                         	ORG	(code+0x0180)
-     568/ 180 :                         vars:
-     569/ 180 :                         first:
-     570/ 180 :                         	; The first argument for the Fibonacci step
-     571/ 180 : 00 00 00 00             	DB	0, 0, 0, 0
-     572/ 184 :                         second:
-     573/ 184 :                         	; The second argument for the Fibonacci step
-     574/ 184 : 00 00 00 01             	DB	0, 0, 0, 1
-     575/ 188 :                         tmp_conv:
-     576/ 188 :                         	; used for 32-bit division
-     577/ 188 : 00 00 00 00 00          	DB	0, 0, 0, 0, 0
-     578/ 18D :                         radix:
-     579/ 18D :                         	; used to covert the number for printing
-     580/ 18D : 0A                      	DB	10
-     581/ 18E :                         prt_buf:
-     582/ 18E :                         	; buffer where the converted number is stored for printing
-     583/ 18E : 20 00 00 00 00 00 00 00 	DB	' ', 0, 0, 0, 0, 0, 0, 0, 0, 0, '0', 0
+     560/ 155 :                         
+     561/ 155 :                         
+     562/ 155 :                         ; -----------------------------------------------------------------------------
+     563/ 155 :                         ; Variables reside in the space from 0x0180 to 0x01FF.
+     564/ 155 :                         ; The 32-bit values are stored using the big-endian notation.
+     565/ 155 :                         ; -----------------------------------------------------------------------------
+     566/ 180 :                         	ORG	(code+0x0180)
+     567/ 180 :                         vars:
+     568/ 180 :                         first:
+     569/ 180 :                         	; The first argument for the Fibonacci step
+     570/ 180 : 00 00 00 00             	DB	0, 0, 0, 0
+     571/ 184 :                         second:
+     572/ 184 :                         	; The second argument for the Fibonacci step
+     573/ 184 : 00 00 00 01             	DB	0, 0, 0, 1
+     574/ 188 :                         tmp_conv:
+     575/ 188 :                         	; used for 32-bit division
+     576/ 188 : 00 00 00 00 00          	DB	0, 0, 0, 0, 0
+     577/ 18D :                         radix:
+     578/ 18D :                         	; used to covert the number for printing
+     579/ 18D : 0A                      	DB	10
+     580/ 18E :                         prt_buf:
+     581/ 18E :                         	; buffer where the converted number is stored for printing
+     582/ 18E : 20 00 00 00 00 00 00 00 	DB	' ', 0, 0, 0, 0, 0, 0, 0, 0, 0, '0', 0
           196 : 00 00 30 00            
-     584/ 19A :                         prt_buf_end:
-     585/ 19A :                         
-     586/ 19A :                         initial_msg:
-     587/ 19A : 0D 0A 46 69 62 6F 6E 61 	DB	"\r\nFibonacci numbers less than 4,294,967,296\r\n\0"
+     583/ 19A :                         prt_buf_end:
+     584/ 19A :                         
+     585/ 19A :                         initial_msg:
+     586/ 19A : 0D 0A 46 69 62 6F 6E 61 	DB	"\r\nFibonacci numbers less than 4,294,967,296\r\n\0"
           1A2 : 63 63 69 20 6E 75 6D 62
           1AA : 65 72 73 20 6C 65 73 73
           1B2 : 20 74 68 61 6E 20 34 2C
           1BA : 32 39 34 2C 39 36 37 2C
           1C2 : 32 39 36 0D 0A 00      
-     588/ 1C8 :                         final_msg:
-     589/ 1C8 : 0D 0A 50 72 65 73 73 20 	DB	"\r\nPress <ENTER> to return to the monitor\r\n\0"
+     587/ 1C8 :                         final_msg:
+     588/ 1C8 : 0D 0A 50 72 65 73 73 20 	DB	"\r\nPress <ENTER> to return to the monitor\r\n\0"
           1D0 : 3C 45 4E 54 45 52 3E 20
           1D8 : 74 6F 20 72 65 74 75 72
           1E0 : 6E 20 74 6F 20 74 68 65
           1E8 : 20 6D 6F 6E 69 74 6F 72
           1F0 : 0D 0A 00               
-     590/ 1F3 :                         
-     591/ 1F3 :                         ; -----------------------------------------------------------------------------
-     592/ 1F3 :                         ; Reserve the space for SCRT stack (R6) from 0x0200 to 0x027F
-     593/ 1F3 :                         ; -----------------------------------------------------------------------------
-     594/ 27F :                         	ORG	(code+0x027F)
-     595/ 27F :                         scrt_stack:
-     596/ 27F :                         
-     597/ 27F :                         ; -----------------------------------------------------------------------------
-     598/ 27F :                         ; Reserve the space for the standard stack (R2) from 0x0280 to 0x02FF
-     599/ 27F :                         ; -----------------------------------------------------------------------------
-     600/ 2FF :                         	ORG	(code+0x02FF)
-     601/ 2FF :                         stack:
+     589/ 1F3 :                         
+     590/ 1F3 :                         ; -----------------------------------------------------------------------------
+     591/ 1F3 :                         ; Reserve the space for SCRT stack (R6) from 0x0200 to 0x027F
+     592/ 1F3 :                         ; -----------------------------------------------------------------------------
+     593/ 27F :                         	ORG	(code+0x027F)
+     594/ 27F :                         scrt_stack:
+     595/ 27F :                         
+     596/ 27F :                         ; -----------------------------------------------------------------------------
+     597/ 27F :                         ; Reserve the space for the standard stack (R2) from 0x0280 to 0x02FF
+     598/ 27F :                         ; -----------------------------------------------------------------------------
+     599/ 2FF :                         	ORG	(code+0x02FF)
+     600/ 2FF :                         stack:
+     601/ 2FF :                         
      602/ 2FF :                         
-     603/ 2FF :                         
-     604/ 2FF :                         ; -----------------------------------------------------------------------------
-     605/ 2FF :                         ; Monitor routines called by this program:
-     606/ 2FF :                         ; -----------------------------------------------------------------------------
- AS V1.42 Beta [Bld 281] - Source File fibonacci.asm - Page 13 - 17/03/25 16:43:13
+     603/ 2FF :                         ; -----------------------------------------------------------------------------
+     604/ 2FF :                         ; Monitor routines called by this program:
+     605/ 2FF :                         ; -----------------------------------------------------------------------------
+     606/8000 :                         	ORG	0x8000		; monitor entry point
+     607/8000 :                         monitor:
+     608/8000 :                         
+ AS V1.42 Beta [Bld 281] - Source File fibonacci.asm - Page 13 - 18/03/25 18:44:43
 
 
-     607/8000 :                         	ORG	0x8000		; monitor entry point
-     608/8000 :                         monitor:
-     609/8000 :                         
-     610/8000 :                         ;	ORG	0x80A3		; mon_get_ch
-     611/8000 :                         ;mon_get_ch:
-     612/8000 :                         
-     613/8000 :                         ;	ORG	0x8100		; mon_put_ch
-     614/8000 :                         ;mon_put_ch:
-     615/8000 :                         
-     616/8519 :                         	ORG	0x8519		; mon_crlf
-     617/8519 :                         mon_crlf:
-     618/8519 :                         
-     619/8519 :                         ;	ORG	0x85BF		; mon_prt_b_hex
-     620/8519 :                         ;mon_prt_b_hex:
-     621/8519 :                         
-     622/8526 :                         	ORG	0x8526		; mon_put_str
-     623/8526 :                         mon_put_str:
-     624/8526 :                         
-     625/8ADB :                         	ORG	0x8ADB		; SCRT call subroutine invoked by SEP R4 and using R6 as SP
-     626/8ADB :                         mon_scrt_call:
-     627/8ADB :                         
-     628/8AED :                         	ORG	0x8AED		; SCRT return subroutine invoked by SEP R5 and using R6 as SP
-     629/8AED :                         mon_scrt_return:
-     630/8AED :                         
- AS V1.42 Beta [Bld 281] - Source File fibonacci.asm - Page 14 - 17/03/25 16:43:13
+     609/8000 :                         ;	ORG	0x80A3		; mon_get_ch
+     610/8000 :                         ;mon_get_ch:
+     611/8000 :                         
+     612/8000 :                         ;	ORG	0x8100		; mon_put_ch
+     613/8000 :                         ;mon_put_ch:
+     614/8000 :                         
+     615/8519 :                         	ORG	0x8519		; mon_crlf
+     616/8519 :                         mon_crlf:
+     617/8519 :                         
+     618/8519 :                         ;	ORG	0x85BF		; mon_prt_b_hex
+     619/8519 :                         ;mon_prt_b_hex:
+     620/8519 :                         
+     621/8526 :                         	ORG	0x8526		; mon_put_str
+     622/8526 :                         mon_put_str:
+     623/8526 :                         
+     624/8ADB :                         	ORG	0x8ADB		; SCRT call subroutine invoked by SEP R4 and using R6 as SP
+     625/8ADB :                         mon_scrt_call:
+     626/8ADB :                         
+     627/8AED :                         	ORG	0x8AED		; SCRT return subroutine invoked by SEP R5 and using R6 as SP
+     628/8AED :                         mon_scrt_return:
+     629/8AED :                         
+ AS V1.42 Beta [Bld 281] - Source File fibonacci.asm - Page 14 - 18/03/25 18:44:43
 
 
   Symbol Table (* = unused):
@@ -790,11 +787,11 @@
 *ARCHITECTURE :                                      "x86_64-unknown-linux" - |
 *BITFUNCSINC :                    1 - | *CASESENSITIVE :                  0 - |
  CODE :                           0 C | *CONSTPI :     3.141592653589793239 - |
-*DATE :                  "17/03/25" - |  DEC_CONV :                     11E C |
- DEC_DIGIT :                    10B C |  DEC_DIGIT_LOOP :               124 C |
- DEC_PREFIX_LESS :              147 C |  DEC_TEST_IF_DONE :             14A C |
+*DATE :                  "18/03/25" - |  DEC_CONV :                     118 C |
+ DEC_DIGIT :                    105 C |  DEC_DIGIT_LOOP :               11E C |
+ DEC_PREFIX_LESS :              141 C |  DEC_TEST_IF_DONE :             144 C |
 *FALSE :                          0 - |  FIB_L :                         47 C |
- FIB_L_END :                     89 C |  FINAL_MSG :                    1C8 C |
+ FIB_L_END :                     83 C |  FINAL_MSG :                    1C8 C |
  FIRST :                        180 C | *FLOATMAX :   1.18973149535725E4932 - |
 *HAS64 :                          1 - |  INITIAL_MSG :                  19A C |
 *LISTON :                         1 - | *MACEXP :                         7 - |
@@ -802,7 +799,7 @@
 *MOMCPUNAME :                "1802" - |  MONITOR :                     8000 C |
  MON_CRLF :                    8519 C |  MON_PUT_STR :                 8526 C |
  MON_SCRT_CALL :               8ADB C |  MON_SCRT_RETURN :             8AED C |
-*NESTMAX :                      100 - |  PRT_32B_NUM :                   90 C |
+*NESTMAX :                      100 - |  PRT_32B_NUM :                   8A C |
  PRT_BUF :                      18E C |  PRT_BUF_END :                  19A C |
  R0 :                             0 - | *R1 :                             1 - |
  R2 :                             2 - |  R3 :                             3 - |
@@ -814,14 +811,14 @@
  RD :                            0D - | *RE :                            0E - |
 *RELAXED :                        1 - | *RF :                            0F - |
  SCRT_STACK :                   27F C |  SECOND :                       184 C |
- STACK :                        2FF C | *TIME :                  "16:43:13" - |
+ STACK :                        2FF C | *TIME :                  "18:44:43" - |
  TMP_CONV :                     188 C | *TRUE :                           1 - |
  VARS :                         180 C | *VERSION :                     142F - |
 
      59 symbols
      21 unused symbols
 
- AS V1.42 Beta [Bld 281] - Source File fibonacci.asm - Page 15 - 17/03/25 16:43:13
+ AS V1.42 Beta [Bld 281] - Source File fibonacci.asm - Page 15 - 18/03/25 18:44:43
 
 
   Defined Macros:
@@ -831,7 +828,7 @@ ADD_DP                                |
 
       1 macro
 
- AS V1.42 Beta [Bld 281] - Source File fibonacci.asm - Page 16 - 17/03/25 16:43:13
+ AS V1.42 Beta [Bld 281] - Source File fibonacci.asm - Page 16 - 18/03/25 18:44:43
 
 
   Defined Functions:
@@ -845,7 +842,7 @@ HIWORD                                | LO
 HI                                    | CUTOUT                               
 INVMASK                               | MASK                                 
 
- AS V1.42 Beta [Bld 281] - Source File fibonacci.asm - Page 17 - 17/03/25 16:43:13
+ AS V1.42 Beta [Bld 281] - Source File fibonacci.asm - Page 17 - 18/03/25 18:44:43
 
 
   Code Pages:
@@ -855,10 +852,10 @@ STANDARD (0 changed characters)
 
 1 code page
 
-0.02 seconds assembly time
+0.04 seconds assembly time
 
-    711 lines source file
-    805 lines incl. macro expansions
+    710 lines source file
+    802 lines incl. macro expansions
       2 passes
       0 errors
       0 warnings

@@ -122,33 +122,32 @@
 ; the `fib_l_end` location.
 ; -----------------------------------------------------------------------------
 add_dp	MACRO a,b
-	SEX	b			; let X point to the register holding the 2nd operand address
+	SEX	a			; let X point to the register holding the 2nd operand address
 	INC	a			; point to the 4th byte of a
 	INC	a
 	INC	a
 	INC	b			; point to the 4th byte of b
 	INC	b
 	INC	b
-	LDN	a			; load the 4th byte of a
+	LDN	b			; load the 4th byte of a
 	ADD				; lo(M[A]) = lo(M[a]) + lo(M[b])
-	STR	a			; store the 4th byte of a
-	DEC	a			; point to the 3rd byte of a
+	STXD				; store the 4th byte of a, point to the 3rd byte of a
 	DEC	b			; point to the 3rd byte of b
-	LDN	a			; load the the 3rd byte of a
+	LDN	b			; load the the 3rd byte of a
 	ADC				; lo(M[A]) = lo(M[a]) + lo(M[b]) + DF
-	STR	a			; store the 3rd byte of a
-	DEC	a			; point to the 2nd byte of a
+	STXD				; store the 3rd byte of a, point to the 2nd byte of a
 	DEC	b			; point to the 2nd byte of b
-	LDN	a			; load the 2nd byte of a
+	LDN	b			; load the 2nd byte of a
 	ADC				; lo(M[A]) = lo(M[a]) + lo(M[b]) + DF
-	STR	a			; store the 2nd byte of a
-	DEC	a			; point to the 1st byte of a
+	STXD				; store the 2nd byte of a, point to the 1st byte of a
 	DEC	b			; point to the 1st byte of b
-	LDN	a			; load the 1st byte of a
+	LDN	b			; load the 1st byte of a
 	ADC				; lo(M[A]) = lo(M[a]) + lo(M[b]) + DF
 	SEX	R2			; restore X to point to the stack
 	BDF	fib_l_end		; if there was a carry, we are over 32-bits; exit
-	STR	a			; otherwise, store the 1st byte of a
+	STR	a			; otherwise, store the 1st byte of a,
+	; the pointer to a is on the 1st byte of a
+	; the pointer to b is on the 1st byte of b
 	ENDM
 
 

@@ -209,8 +209,11 @@ init_loop:
 	PLO	RD
 
 	; ---------------------------------------------------------------------
-	; The outer loop loops over all odd numbers starting with 3 less than 32768.
-	; If any encountered number has not already been marked, it is a prime.
+	; The outer loop loops over all odd numbers starting with 3 less than 256.
+	; Note: looping over the first sqrt(N) prime candidates is enough to sieve out
+	; all composites up to N.
+	; If any encountered number has not already been marked, it is a prime,
+	; and we must sieve out all its multiples starting with the square of this number.
 	; ---------------------------------------------------------------------
 
 outer_marking_loop:
@@ -280,34 +283,67 @@ outer_marking_loop:
 	SEX	R9
 	AND
 	SEX	R2
-	BNZ	next_marking_number
+	LBNZ	next_marking_number
 
 	; ---------------------------------------------------------------------
 	; At this point, we have a prime number.
-	; The inner loop marks all its multiples as composite numbers.
+	; The square of that number is the first unmarked composite in a sequence of
+	; composites that will be mask based on this prime number by the inner loop.
+	; The square is calculated by multiplying the value in RC with itself.
+	; The result is held in `tmp_mark`.
+	; RA is pointer to `tmp_mark`.
+	; R8 is a temporary register where the 2nd multiplicand is held.
+	; ---------------------------------------------------------------------
+	; Note: RA currently point to the 1st byte of `tmp_mark`
+	GLO	RC			; preserve the RC.LO
+	STXD
+	GHI	RC			; RC.HI is 0
+	STR	RA			; set 0 to the 1st byte of `tmp_mark`
+	INC	RA
+	STR	RA			; set 0 to the 2nd byte of `tmp_mark`
+	PHI	R8			; R8 holds 2nd multiplication operant. R8.HI is 0
+	GLO	RC			; the R8.LO is initially the prime
+	PLO	R8
+	SEX	RA			; RA is index
+	; The squaring operation loop
+sq_loop:
+	; RA points to the 2nd byte of `tmp_mask`
+	; test if MSB of RC is 1 or 0
+	GLO	RC			; check if RC is shifted out
+	BZ	square_res		; if RC is 0, squaring operation is completed
+	SHR				; otherwise, shift out the LSB of RC
+	PLO	RC			; store the new value of RC
+	BNF	sq_after_sum		; if the shifted out bit was 0, skip the partial sum
+	; shifted out bit was 1, do the partial sum, note RA points to the 2nd byte of `tmp_mark`
+	GLO	R8			; get low part of the 2nd multiplication operand
+	ADD				; add it with the 2nd byte of the partial sum in `tmp_mark`
+	STXD				; store the result in the 2nd byte of `tmp_mark` and move RA to the 1st byte
+	GHI	R8			; get the hi part of the 2nd multiplication operand
+	ADC				; add the 1st byte of the partial sum with carry
+	STR	RA			; store the result in the 1st byte of `tmp_mark`
+	INC	RA			; let RA point to the 2nd byte of `tmp_mark`
+sq_after_sum:
+	; shift left the 2nd multiplication operand
+	GLO	R8
+	SHL
+	PLO	R8
+	GHI	R8
+	SHLC
+	PHI	R8
+	BR	sq_loop
+square_res:
+	SEX	R2			; restore the default index register
+	IRX				; restore RC.LO
+	LDX
+	PLO	RC
+	DEC	RA			; let RA point to the 1st byte of `tmp_mark`
+
+	; ---------------------------------------------------------------------
+	; The inner loop marks all multiples of the prime as composite numbers.
 	; ---------------------------------------------------------------------
 
 inner_marking_loop:
 
-	; ---------------------------------------------------------------------
-	; Calculate numbers to mark: M[RA] = M[RA] + M[RD]
-	; ---------------------------------------------------------------------
-
-	; RA points th the 1st byte of `tmp_mark`, and RD points to the 1st byte of `step`.
-	SEX	RD			; make RD index
-	INC	RD			; let RD point to the 2nd byte of `step`
-	INC	RA			; let RA point to the 2nd byte of `tnp_mark`
-	LDN	RA			; load the 2nd byte of `tmp_mark`
-	ADD				; add the 2nd byte of `step`
-	STR	RA			; store the result to the 2nd byte of `tmp_mark`
-	DEC	RD			; point to the 1st byte of `step`
-	DEC	RA			; point to the 1st byte of `tmp_mark`
-	LDN	RA			; load the 1st byte of `tmp_mark`
-	ADC				; add the 1st byte of `step` with carry
-	STR	RA			; store the result to the 1st byte of `tmp_mark`
-	SEX	R2			; restore the default index register
-	; If M[RA] >= 65536, i.e., the carry has occurred, then the inner loop has been completed.
-	BDF	next_marking_number	; The carry is detected, and we are done with the inner loop.
 	; RA points to the 1st byte of `tmp_mark`.
 
 	; ---------------------------------------------------------------------
@@ -359,7 +395,25 @@ inner_marking_loop:
 	SEX	R2
 	STR	R8
 
-	BR	inner_marking_loop
+	; ---------------------------------------------------------------------
+	; Calculate numbers to mark: M[RA] = M[RA] + M[RD]
+	; ---------------------------------------------------------------------
+
+	; RA points th the 1st byte of `tmp_mark`, and RD points to the 1st byte of `step`.
+	SEX	RD			; make RD index
+	INC	RD			; let RD point to the 2nd byte of `step`
+	INC	RA			; let RA point to the 2nd byte of `tnp_mark`
+	LDN	RA			; load the 2nd byte of `tmp_mark`
+	ADD				; add the 2nd byte of `step`
+	STR	RA			; store the result to the 2nd byte of `tmp_mark`
+	DEC	RD			; point to the 1st byte of `step`
+	DEC	RA			; point to the 1st byte of `tmp_mark`
+	LDN	RA			; load the 1st byte of `tmp_mark`
+	ADC				; add the 1st byte of `step` with carry
+	STR	RA			; store the result to the 1st byte of `tmp_mark`
+	SEX	R2			; restore the default index register
+	; If M[RA] >= 65536, i.e., the carry has occurred, then the inner loop has been completed.
+	LBNF	inner_marking_loop	; The carry is not detected, repeat the inner loop.
 
 next_marking_number:
 
@@ -371,7 +425,7 @@ next_marking_number:
 	; In our case, N is 65537, so we need to iterate only over the first 256 candidates, i.e.,
 	; when RC.HI stops being 0; we are done.
 	GHI	RC
-	BZ	outer_marking_loop
+	LBZ	outer_marking_loop
 
 
 	; ---------------------------------------------------------------------
@@ -594,6 +648,7 @@ prt_16b_num:
 	SEP	R5
 
 
+	ORG	(code+0x0200)
 dec_digit:
 	; ---------------------------------------------------------------------
 	; This function converts the single decimal digit by dividing the number
@@ -706,10 +761,10 @@ dec_test_if_done
 
 
 ; -----------------------------------------------------------------------------
-; Variables reside in the space from 0x0180 to 0x01FF.
+; Variables reside in the space from 0x0300 to 0x03FF.
 ; The 16-bit values are stored using the big-endian notation.
 ; -----------------------------------------------------------------------------
-	ORG	(code+0x0200)
+	ORG	(code+0x0300)
 vars:
 mark_mask:
 	; bitmask used to update a `sieve` byte
@@ -752,16 +807,16 @@ final_msg:
 
 
 ; -----------------------------------------------------------------------------
-; Reserve the space for SCRT stack (R6) from 0x0300 to 0x037F
+; Reserve the space for SCRT stack (R6) from 0x0400 to 0x047F
 ; -----------------------------------------------------------------------------
-	ORG	(code+0x037F)
+	ORG	(code+0x047F)
 scrt_stack:
 
 
 ; -----------------------------------------------------------------------------
-; Reserve the space for the standard stack (R2) from 0x0380 to 0x03FF
+; Reserve the space for the standard stack (R2) from 0x0480 to 0x04FF
 ; -----------------------------------------------------------------------------
-	ORG	(code+0x03FF)
+	ORG	(code+0x04FF)
 stack:
 
 
