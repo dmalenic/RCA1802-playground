@@ -217,7 +217,7 @@ init_loop:
 	; ---------------------------------------------------------------------
 
 outer_marking_loop:
-	; Initialize the current testing number in `tmp_mark` and `step` to the value in RC.
+	; Initialize the current testing number in `tmp_mark` and `step` using value from RC.
 	GHI	RC			; get RC.HI
 	STR	RA			; store it to the 1st byte of `tmp_mark`
 	STR	RD			; and to the 1st byte of `step`
@@ -396,7 +396,7 @@ inner_marking_loop:
 	STR	R8
 
 	; ---------------------------------------------------------------------
-	; Calculate numbers to mark: M[RA] = M[RA] + M[RD]
+	; Calculate the next numbers to mark: M[RA] = M[RA] + M[RD]
 	; ---------------------------------------------------------------------
 
 	; RA points th the 1st byte of `tmp_mark`, and RD points to the 1st byte of `step`.
@@ -516,8 +516,7 @@ prt_skip_not_prime:
 	; If all numbers are tested, R8 will point to `sieve_end`.
 	GHI	R8			; get R8.HI
 	SMI	hi(sieve_end)		; subtract the high part of `sieve_end`
-	BZ	print_loop_end		; exit loop if equal
-	BR	print_res_loop
+	BNZ	print_res_loop
 
 print_loop_end:
 
@@ -701,16 +700,15 @@ dec_digit_loop:
 	STXD				; preserve the loop counter onto the stack
 
 	; Shift-left the 3rd byte in `tmp_conv`, putting 0 to the lsb position.
+	SEX	RA			; make RA index
 	LDN	RA			; note that RA points to the last byte within the buffer
 	SHL
-	STR	RA
-	DEC	RA
+	STXD
 
 	; Shift-left the 2nd byte in `tmp_conv`, filling the lsb position from the DF.
 	LDN	RA
 	SHLC
-	STR	RA
-	DEC	RA
+	STXD
 
 	; Shift-left the 1st byte in `tmp_conv`, filling the lsb position from the DF.
 	LDN	RA
