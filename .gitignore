@@ -2,5 +2,6 @@
 *~
 *.p
 .idea
+.vscode
 Writerside
 christmas-challenge/

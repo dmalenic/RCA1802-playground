@@ -23,7 +23,8 @@ The following projects are the result of my early investigation:
 - the [mem-test](mem-test/README.md) is an extension of Chack Yakym's [mem-test](https://www.retrotechnology.com/memship/yakym_1802.zip).
 - my [port](killthebit/README.md) of the legendary Altair 8800 game [Killbits](https://altairclone.com/downloads/killbits.pdf) to [The 1802 Membership Card](https://www.sunrise-ev.com/1802.htm).
 - [8 queens](8-queens/README.md) problem is an investigation on how RCA 1802 calls a subroutine.
-- [fibonacci](fibonacci/README.md) makes RCA 1802 go 32 bit.
+- [fibonacci](fibonacci/README.md) makes RCA 1802 go 32-bit or even 64-bit.
+- [prime-numbers](prime-numbers/README.md) implements the Sieve of Eratosthenes algorithm for finding prime numbers less than 65536.
 
 I use Linux and [The Macro Assembler AS](http://john.ccac.rwth-aachen.de:8000/as/) written by 
 [Alfred Arnold](mailto:alfred@ccac.rwth-aachen.de). The examples might need some tweaking to

@@ -2,62 +2,7 @@
 ; SPDX-FileCopyrightText: © 2024 Damir Maleničić,
 ; SPDX-License-Identifier: MIT
 ; -----------------------------------------------------------------------------
-; Calculates the Fibonacci numbers less than 4294967296
-;
-; Expected output:
-;
-; Fibonacci numbers less than 4,294,967,296
-;           0
-;           1
-;           1
-;           2
-;           3
-;           5
-;           8
-;          13
-;          21
-;          34
-;          55
-;          89
-;         144
-;         233
-;         377
-;         610
-;         987
-;        1597
-;        2584
-;        4181
-;        6765
-;       10946
-;       17711
-;       28657
-;       46368
-;       75025
-;      121393
-;      196418
-;      317811
-;      514229
-;      832040
-;     1346269
-;     2178309
-;     3524578
-;     5702887
-;     9227465
-;    14930352
-;    24157817
-;    39088169
-;    63245986
-;   102334155
-;   165580141
-;   267914296
-;   433494437
-;   701408733
-;  1134903170
-;  1836311903
-;  2971215073
-;
-; Press <ENTER> to return to the monitor
-;
+; Calculates the Fibonacci numbers that fit into 32-bit or 64-bit numbers.
 ; -----------------------------------------------------------------------------
 ; Register allocation is partially imposed by the integration with Chuck's monitor:
 ; R0 - reset program counter and SP, PC, and SP for user programs invoked with the
@@ -92,8 +37,11 @@
 
 ; enable C style numeric constants --------------------------------------------
 
-
         RELAXED ON
+
+
+; define the processor the code should be generated for -----------------------
+; The code is intended for the RCA 1802 processor.
 
         CPU     1802
 
@@ -109,38 +57,65 @@
 
 
 ; -----------------------------------------------------------------------------
+; CONSTANTS
+; -----------------------------------------------------------------------------
+; BYTE_SZ is the number of bytes reserved for a Fibonacci number.
+; Allowed values are 4 or 8.
+; NO_DEC_DIGITS is the number of decimal digits needed to represent a greatest
+; unsigned number that fits in BYTE_SZ bytes.
+; BIT_SZ_STR is a string representation of the number of bits in a BYTE_SZ bytes.
+; -----------------------------------------------------------------------------
+BYTE_SZ		EQU	8
+
+	if BYTE_SZ = 8
+
+NO_DEC_DIGITS	EQU	20
+BIT_SZ_STR	EQU	"64"
+
+	elseif BYTE_SZ = 4
+N
+O_DEC_DIGITS	EQU	10
+BIT_SZ_STR	EQU	"32"
+
+	else
+		ERROR "Unsupported BYTE_SZ"
+	endif
+
+
+; -----------------------------------------------------------------------------
 ; MACROS
 ; -----------------------------------------------------------------------------
 
 
 ; -----------------------------------------------------------------------------
-; Add two 32-bit numbers: M[a] = M[a]+M[b]
+; Add two (BYTE_SZ*8)-bit numbers: M[a] = M[a]+M[b]
 ; a - holds the register pointing to the location of the first operand
 ; b - holds the register pointing to the location of the second operand
 ; a and b are unchanged
-; if 32-bit overflow is encountered, end the calculation by jumping to
-; the `fib_l_end` location.
+; If (BYTE_SZ*8)-bit overflow is encountered, end the calculation by jumping
+; to the `fib_l_end` location.
 ; -----------------------------------------------------------------------------
 add_dp	MACRO a,b
 	SEX	a			; let X point to the register holding the 2nd operand address
-	INC	a			; point to the 4th byte of a
-	INC	a
-	INC	a
-	INC	b			; point to the 4th byte of b
-	INC	b
-	INC	b
-	LDN	b			; load the 4th byte of a
+	GLO	a			; point to the 8th byte of a
+	ADI	(BYTE_SZ-1)
+	PLO	a
+	GLO	b			; point to the 8th byte of b
+	ADI	(BYTE_SZ-1)
+	PLO	b
+	; add the least significant bytes
+	LDN	b			; load the 8th byte of a
 	ADD				; lo(M[A]) = lo(M[a]) + lo(M[b])
-	STXD				; store the 4th byte of a, point to the 3rd byte of a
-	DEC	b			; point to the 3rd byte of b
-	LDN	b			; load the the 3rd byte of a
-	ADC				; lo(M[A]) = lo(M[a]) + lo(M[b]) + DF
-	STXD				; store the 3rd byte of a, point to the 2nd byte of a
-	DEC	b			; point to the 2nd byte of b
-	LDN	b			; load the 2nd byte of a
-	ADC				; lo(M[A]) = lo(M[a]) + lo(M[b]) + DF
-	STXD				; store the 2nd byte of a, point to the 1st byte of a
-	DEC	b			; point to the 1st byte of b
+	STXD				; store the 8th byte of a, point to the 7th byte of a
+	DEC	b			; point to the 7rd byte of b
+	; add with carry the intermediate bytes
+	REPT	(BYTE_SZ-2)
+	LDN	b			; load the current byte of a
+	ADC				; lo(M[A]) = lo(M[a]) + lo(M[b])
+	STXD				; store the current byte of a, point to the previous byte of a
+	DEC	b			; point to the previous byte of b
+	ENDM
+	; add with carry the most significant byte
 	LDN	b			; load the 1st byte of a
 	ADC				; lo(M[A]) = lo(M[a]) + lo(M[b]) + DF
 	SEX	R2			; restore X to point to the stack
@@ -238,9 +213,9 @@ main:
 	PHI	R7			; the high part of `vars` holds the page where all strings reside
 	PHI	R8			; the high part of `first`
 	PHI	R9			; the high part of `second`
-	LDI	lo(first+3)		; set the low part to the last byte of `first`
+	LDI	lo(first+BYTE_SZ-1)	; set the low part to the last byte of `first`
 	PLO	R8
-	LDI	lo(second+3)		; set the low part to the last byte of  `second`
+	LDI	lo(second+BYTE_SZ-1)	; set the low part to the last byte of  `second`
 	PLO	R9
 
 	; print the initial message
@@ -251,22 +226,23 @@ main:
 	DB	lo(mon_put_str)
 
 	; Initialize the `first` and the `second` to enable the program invocation without reloading.
-	; Let the `first` be DB 0, 0, 0, 0.
+	; Let the `first` be DB 0, 0, 0, 0, 0, 0, 0, 0.
 	SEX	R8			; temporary make R8 index pointer
 	LDI	0
+	REPT	(BYTE_SZ-1)
 	STXD
-	STXD
-	STXD
+	ENDM
 	STR	R8
 	; R8 points to the first byte of `first`.
 
-	; Let the `second` be DB 0, 0, 0, 1.
+	; Let the `second` be DB 0, 0, 0, 0, 0, 0, 0, 1.
 	SEX	R9			; temporary make R9 index pointer
 	LDI	1
 	STXD
 	LDI	0
+	REPT	(BYTE_SZ-2)
 	STXD
-	STXD
+	ENDM
 	STR	R9
 	; R9 points to the first byte of `second`.
 
@@ -274,8 +250,8 @@ main:
 
 	; Print the `first` holding the initial 0.
 	SEP	R4
-	DB	hi(prt_32b_num)
-	DB	lo(prt_32b_num)
+	DB	hi(prt_num)
+	DB	lo(prt_num)
 	DB	lo(first)
 
 	; The fibonacci sequence calculation loop calculates 2 fibonacci numbers per iteration.
@@ -284,8 +260,8 @@ main:
 fib_l:
 	; Print the `second`.
 	SEP	R4
-	DB	hi(prt_32b_num)
-	DB	lo(prt_32b_num)
+	DB	hi(prt_num)
+	DB	lo(prt_num)
 	DB	lo(second)
 
 	; first = first+second
@@ -293,8 +269,8 @@ fib_l:
 
 	; Print the `first`
 	SEP	R4
-	DB	hi(prt_32b_num)
-	DB	lo(prt_32b_num)
+	DB	hi(prt_num)
+	DB	lo(prt_num)
 	DB	lo(first)
 
 	; second = second+first
@@ -319,9 +295,9 @@ fib_l_end:
 	SEP	R0
 
 
-prt_32b_num:
+prt_num:
 	; ---------------------------------------------------------------------
-	; Print a 32-bit number located in a buffer on `vars:` page whose
+	; Print a BYTE_SZ bytes number located in a buffer on `vars:` page whose
 	; in-page address is passed in as the inline arguments.
 	; R7 is used as a pointer to a string holding a converted number.
 	; RA, RC and RD are scratch-pad registers for a digit conversion.
@@ -358,18 +334,11 @@ prt_32b_num:
 	PLO	RD			; put it in the low part of RD to make RD point to the destination buffer
 	LDI	0			; set 0 to the first byte of `tmp_conv`
 	STR	RD
-	INC	RD			; increase RD to point to the 2nd byte of `tmp_conv`
-	LDA	RC			; copy the 1st byte of the value pointed by RC to the location pointed by RD
-	STR	RD
-	INC	RD			; increase RD to point to the 3rd byte of `tmp_conv`
-	LDA	RC			; copy the 2nd byte of the value pointed by RC to the location pointed by RD
-	STR	RD
-	INC	RD			; increase RD to point to the 4th byte of `tmp_conv`
-	LDA	RC			; copy the 3rd byte of the value pointed by RC to the location pointed by RD
-	STR	RD
-	INC	RD			; increase RD to point to the 5th byte of `tmp_conv`
-	LDN	RC			; copy the 4th byte of the value pointed by RC to the location pointed by RD
-	STR	RD
+	REPT	(BYTE_SZ)
+	INC	RD			; increase RD to point to the next byte of `tmp_conv`
+	LDA	RC			; get the current byte from location pointed by RC into D, then increment RC
+	STR	RD			; store D into the location pointed by the current value of RD
+	ENDM
 
 	; Initialize the string buffer where the decimal conversion result will be written
 	; to the default result as if the conversion input was 0.
@@ -380,8 +349,8 @@ prt_32b_num:
 	STXD
 	LDI	'0'			; the corner case for 0, to be overwritten if the input number is not 0
 	STXD
-	LDI	0x20			; fill the rest of the buffer with ' '
-	REPT	10			; an inline macro that repeats commands till ENDM 10 times
+	LDI	' '			; fill the rest of the buffer with ' '
+	REPT	NO_DEC_DIGITS		; an inline macro that repeats commands till ENDM NO_DEC_DIGITS times
 	STXD
 	ENDM
 	SEX	R2			; restore the default index register
@@ -390,9 +359,10 @@ prt_32b_num:
 	LDI	lo(prt_buf_end-1)
 	PLO	RC
 
-	; Convert the 32-bit unsigned value pointed by RA to a decimal string.
-	; We have at most 10 decimal digits, repeat digit conversion 10 times starting from the rightmost position.
-	REPT	10			; an inline macro that repeats commands till ENDM 10 times
+	; Convert the BYTE_SZ bytes unsigned number pointed by RA into a decimal string.
+	; We have at most NO_DEC_DIGITS decimal digits, repeat digit conversion NO_DEC_DIGITS times starting
+	; from the rightmost position.
+	REPT	NO_DEC_DIGITS		; an inline macro that repeats commands till ENDM NO_DEC_DIGITS times
 	SEP	R4			; convert a single digit
 	DB	hi(dec_digit)
 	DB	lo(dec_digit)
@@ -438,8 +408,8 @@ dec_digit:
 	; in `tmp_conv` by the number in `radix` and writes the result
 	; to the correct position in `prt_buf`. It is intended to be called
 	; as many times as necessary to convert the whole number.
-	; `tmp_conv` is 5 bytes long, the 1st byte is 0 on input, while the 2nd, 3rd,
-	; 4th and the 5th byte hold the number to be converted.
+	; `tmp_conv` is BYTE_SZ+1 bytes long, the 1st byte is 0 on input, while the other,
+	; bytes hold the number to be converted.
 	; As per RCA 1802 convention, the big-endian notation is used.
 	; If the number in `tmp_conv` is 0, the function returns immediately;
         ; otherwise, it divides that number by a radix value.
@@ -460,58 +430,45 @@ dec_digit:
 	PLO	RA
 
 	; If the dividend is zero, return without performing any conversion.
-	; Note: the dividend is stored in the 2nd, 3rd, 4th and 5th position of the `tmp_conv` buffer.
-	LDA	RA			; load the 2nd byte in the buffer
-	BNZ	dec_conv		; the 2nd byte is not zero, perform the conversion
-	LDA	RA			; load the 3rd byte
-	BNZ	dec_conv		; the 3rd byte is not zero, perform the conversion
-	LDA	RA			; load the 4th byte
-	BNZ	dec_conv		; the 4th byte is not zero, perform the conversion
-	LDN	RA			; load the 5th byte
-	BNZ	dec_conv		; the 5th byte is not zero, perform the conversion
-	SEP	R5			; all tested bytes were zero; return immediately.
+	; Note: the dividend is stored from the 2nd position of the `tmp_conv` buffer.
+	REPT	BYTE_SZ
+	LDA	RA			; load the current dividend byte in the buffer
+	BNZ	dec_conv		; the current dividend byte is not zero, perform the conversion
+	ENDM
+	SEP	R5			; the dividend is zero, return
 
 dec_conv:
 	; Move the `prt_buf` index to where the current conversion result character will be stored.
 	DEC	RC
 
 	; Make RA point to the last byte of `tmp_conv`. It assumes the high part of RA has already been initialized.
-	LDI	lo(tmp_conv+4)
+	LDI	lo(tmp_conv_end-1)
 	PLO	RA
 
-	; The loop divides a 32-bit value with an 8-bit value. Each loop iteration calculates 1 bit of the result.
-	; The remainder is in the first byte. The following 4 bytes hold the division result.
-	LDI	32			; 32 iterations
+	; The loop divides a BYTE_SZ bytes value with an 8-bit value. Each loop iteration calculates
+	; 1 bit of the result.
+	; The remainder is in the first byte. The following 8 bytes hold the division result.
+	LDI	(BYTE_SZ*8)		; Number of iterations equals number of bits
 dec_digit_loop:
-	; Shift left 5 bytes buffer content, and if the value in the 1st byte is greater or equal to radix,
-	; add 1 to the last byte.
+	; Shift left (BYTE_SZ+1) bytes buffer content, and if the value in the 1st byte is
+	; greater or equal to radix, add 1 to the last byte.
 	STXD				; preserve the loop counter onto the stack
 
-	; Shift-left the 5th byte in `tmp_conv`, putting 0 to the lsb position.
+	; Shift-left the most significant byte in `tmp_conv`, putting 0 to the lsb position.
 	LDN	RA			; note that RA points to the last byte within the buffer
 	SHL
 	STR	RA
 	DEC	RA
 
-	; Shift-left the 4th byte in `tmp_conv`, filling the lsb position from the DF.
+	; shift left other bytes in `tmp_conv` moving from less significant toward more significant,
+	; and filling the lsb of each byte from DF
+	REPT	(BYTE_SZ-1)
+	; Shift-left the current byte in `tmp_conv`, filling the lsb position from the DF.
 	LDN	RA
 	SHLC
 	STR	RA
 	DEC	RA
-
-	; Shift-left the 3rd byte in `tmp_conv`, filling the lsb position from the DF.
-	LDN	RA
-	SHLC
-	STR	RA
-	DEC	RA
-
-	; Shift-left the 2nd byte in `tmp_conv`, filling the lsb position from the DF.
-	LDN	RA
-	SHLC
-	STR	RA
-	DEC	RA
-
-	; Shift-left the 1st byte in `tmp_conv`, filling the lsb position from the DF.
+	ENDM
 	LDN	RA
 	SHLC
 	STR	RA
@@ -527,7 +484,7 @@ dec_digit_loop:
 	; intermediate result. As the last bit of the last byte of `tmp_conv` was zero after the previous shifting,
 	; adding 1 cannot cause the overflow.
 	STR	RA			; store the subtraction result in the 1st byte of `tmp_conv`
-	LDI	lo(tmp_conv+4)		; point to the last byte of `tmp_conv`
+	LDI	lo(tmp_conv+BYTE_SZ)	; point to the last byte of `tmp_conv`
 	PLO	RA
 	LDN	RA			; add 1 to the last byte of `tmp_conv`
 	ADI	1
@@ -536,7 +493,7 @@ dec_digit_loop:
 
 dec_prefix_less:
 	; Let RA point to the last part of `tmp_conv`.
-	LDI	lo(tmp_conv+4)
+	LDI	lo(tmp_conv+BYTE_SZ)
 	PLO	RA
 
 dec_test_if_done
@@ -563,38 +520,54 @@ dec_test_if_done
 ; Variables reside in the space from 0x0180 to 0x01FF.
 ; The 32-bit values are stored using the big-endian notation.
 ; -----------------------------------------------------------------------------
-	ORG	(code+0x0180)
+	ORG	(code+0x0200)
 vars:
 first:
 	; The first argument for the Fibonacci step
-	DB	0, 0, 0, 0
+	REPT	BYTE_SZ
+	DB	0
+	ENDM
+first_end:
 second:
 	; The second argument for the Fibonacci step
-	DB	0, 0, 0, 1
+	REPT	(BYTE_SZ-1)
+	DB	0
+	ENDM
+	DB	1
+second_end:
 tmp_conv:
-	; used for 32-bit division
-	DB	0, 0, 0, 0, 0
+	; used for long division
+	REPT	(BYTE_SZ+1)
+	DB	0
+	ENDM
+tmp_conv_end:
 radix:
 	; used to covert the number for printing
 	DB	10
 prt_buf:
 	; buffer where the converted number is stored for printing
-	DB	' ', 0, 0, 0, 0, 0, 0, 0, 0, 0, '0', 0
+	REPT	NO_DEC_DIGITS
+	DB	' '
+	ENDM
+	DB	'0'
+	DB	0
 prt_buf_end:
 
 initial_msg:
-	DB	"\r\nFibonacci numbers less than 4,294,967,296\r\n\0"
+	DB	"\r\nFibonacci numbers that fit into "
+	DB	BIT_SZ_STR
+	DB	" bits\r\n\0"
 final_msg:
 	DB	"\r\nPress <ENTER> to return to the monitor\r\n\0"
 
 ; -----------------------------------------------------------------------------
-; Reserve the space for SCRT stack (R6) from 0x0200 to 0x027F
+; Reserve the space for SCRT stack (R6) from 0x0300 to 0x037F
 ; -----------------------------------------------------------------------------
 	ORG	(code+0x027F)
 scrt_stack:
 
 ; -----------------------------------------------------------------------------
-; Reserve the space for the standard stack (R2) from 0x0280 to 0x02FF
+; Reserve the space for the standard stack (R2) from 0x0380 to 0x03FF
 ; -----------------------------------------------------------------------------
 	ORG	(code+0x02FF)
 stack:
@@ -626,3 +599,4 @@ mon_scrt_call:
 
 	ORG	0x8AED		; SCRT return subroutine invoked by SEP R5 and using R6 as SP
 mon_scrt_return:
+

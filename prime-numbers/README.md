@@ -1,6 +1,6 @@
 # Find all prime numbers that can be encoded using 16-bit
 
-It implements the Sieve of Eratosthenes algorithm for finding prime numbers.
+This is the implementation of the Sieve of Eratosthenes algorithm for finding prime numbers.
 
 The search area is the 8k array between locations 0x2000 and 0x4000. Each number is represented as a bit on the
 corresponding array offset. 1 indicates composite number, 0 indicates prime or not yet tested.
